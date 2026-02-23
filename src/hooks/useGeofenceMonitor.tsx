@@ -85,6 +85,10 @@ export function GeofenceMonitorProvider({ children }: { children: ReactNode }) {
   // If the vehicle stays inside for 10+ minutes without a transition-based entry event firing,
   // this fallback auto-triggers the appropriate arrival event.
   const dwellTrackingRef = useRef<Map<string, Date>>(new Map());
+  // Exit-dwell tracking: records when a vehicle was first observed OUTSIDE a geofence zone
+  // after an arrival was recorded. If the vehicle stays outside for 10+ min without a
+  // transition-based exit event firing, this fallback auto-triggers the departure event.
+  const exitDwellTrackingRef = useRef<Map<string, Date>>(new Map());
   const geofenceUpdateMutation = useGeofenceLoadUpdate();
 
   const [organisationId, setOrganisationId] = useState<number | null>(() => {
@@ -437,6 +441,40 @@ export function GeofenceMonitorProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // === ORIGIN EXIT-DWELL FALLBACK (scheduled → in-transit) ===
+        // If loading_arrival was recorded and vehicle is now OUTSIDE origin for 10+ min,
+        // auto-fire loading_departure so load progresses to in-transit.
+        if (load.status === "scheduled" && load.actual_loading_arrival && !load.actual_loading_departure) {
+          const originExitDwellKey = `${load.id}-origin-exit-dwell`;
+          if (!originInsideRaw) {
+            const depEventKey = `${load.id}-loading_departure-${dateKey}`;
+            if (!processedEventsRef.current.has(depEventKey)) {
+              if (!exitDwellTrackingRef.current.has(originExitDwellKey)) {
+                exitDwellTrackingRef.current.set(originExitDwellKey, timestamp);
+              } else {
+                const exitStart = exitDwellTrackingRef.current.get(originExitDwellKey)!;
+                const exitMinutes = (timestamp.getTime() - exitStart.getTime()) / (1000 * 60);
+                if (exitMinutes >= 10) {
+                  processedEventsRef.current.add(depEventKey);
+                  console.log(`[Geofence ExitDwell] Scheduled load ${load.load_id}: vehicle outside origin ${originDepot.name} for ${exitMinutes.toFixed(1)}min — auto-firing loading_departure`);
+                  geofenceUpdateMutation.mutate({
+                    loadId: load.id,
+                    eventType: "loading_departure" as GeofenceEventType,
+                    timestamp: exitStart,
+                    ...eventCtx,
+                    geofenceName: originDepot.name,
+                  });
+                  exitDwellTrackingRef.current.delete(originExitDwellKey);
+                  geofenceEntryRef.current.delete(originEntryKey);
+                }
+              }
+            }
+          } else {
+            // Vehicle is back inside origin, reset exit-dwell timer
+            exitDwellTrackingRef.current.delete(originExitDwellKey);
+          }
+        }
+
         // === DESTINATION GEOFENCE ===
         if (load.status === "in-transit") {
           const justEnteredDest =
@@ -564,6 +602,8 @@ export function GeofenceMonitorProvider({ children }: { children: ReactNode }) {
                 insideCountRef.current.delete(destKeyForHyst);
                 dwellTrackingRef.current.delete(`${load.id}-origin-dwell`);
                 dwellTrackingRef.current.delete(`${load.id}-dest-dwell`);
+                exitDwellTrackingRef.current.delete(`${load.id}-origin-exit-dwell`);
+                exitDwellTrackingRef.current.delete(`${load.id}-dest-exit-dwell`);
                 
                 const keysToDelete: string[] = [];
                 processedEventsRef.current.forEach((k) => {
@@ -574,6 +614,53 @@ export function GeofenceMonitorProvider({ children }: { children: ReactNode }) {
             }
             geofenceEntryRef.current.delete(destEntryKey);
             stationaryTrackingRef.current.delete(destEntryKey);
+          }
+        }
+
+        // === DESTINATION EXIT-DWELL FALLBACK (in-transit → delivered) ===
+        // If offloading_arrival was recorded and vehicle is now OUTSIDE destination for 10+ min,
+        // auto-fire offloading_departure so load progresses to delivered.
+        if (load.status === "in-transit" && load.actual_offloading_arrival && !load.actual_offloading_departure) {
+          const destExitDwellKey = `${load.id}-dest-exit-dwell`;
+          if (!destInsideRaw) {
+            const depEventKey = `${load.id}-offloading_departure-${dateKey}`;
+            if (!processedEventsRef.current.has(depEventKey)) {
+              if (!exitDwellTrackingRef.current.has(destExitDwellKey)) {
+                exitDwellTrackingRef.current.set(destExitDwellKey, timestamp);
+              } else {
+                const exitStart = exitDwellTrackingRef.current.get(destExitDwellKey)!;
+                const exitMinutes = (timestamp.getTime() - exitStart.getTime()) / (1000 * 60);
+                if (exitMinutes >= 10) {
+                  processedEventsRef.current.add(depEventKey);
+                  console.log(`[Geofence ExitDwell] In-transit load ${load.load_id}: vehicle outside destination ${destinationDepot.name} for ${exitMinutes.toFixed(1)}min — auto-firing offloading_departure`);
+                  geofenceUpdateMutation.mutate({
+                    loadId: load.id,
+                    eventType: "offloading_departure" as GeofenceEventType,
+                    timestamp: exitStart,
+                    ...eventCtx,
+                    geofenceName: destinationDepot.name,
+                    onDeliveryComplete: () => {
+                      if (onDeliveryCompleteRef.current) {
+                        onDeliveryCompleteRef.current(load);
+                      }
+                    },
+                  });
+                  // Cleanup all tracking for this load
+                  exitDwellTrackingRef.current.delete(destExitDwellKey);
+                  geofenceEntryRef.current.delete(originEntryKey);
+                  geofenceEntryRef.current.delete(destEntryKey);
+                  stationaryTrackingRef.current.delete(destEntryKey);
+                  insideCountRef.current.delete(originKeyForHyst);
+                  insideCountRef.current.delete(destKeyForHyst);
+                  dwellTrackingRef.current.delete(`${load.id}-origin-dwell`);
+                  dwellTrackingRef.current.delete(`${load.id}-dest-dwell`);
+                  exitDwellTrackingRef.current.delete(`${load.id}-origin-exit-dwell`);
+                }
+              }
+            }
+          } else {
+            // Vehicle is back inside destination, reset exit-dwell timer
+            exitDwellTrackingRef.current.delete(destExitDwellKey);
           }
         }
       }
