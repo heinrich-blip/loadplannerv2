@@ -40,7 +40,9 @@ import {
   parseISO,
 } from "date-fns";
 import {
+  AlertTriangle,
   Calendar,
+  Clock,
   FileDown,
   MapPin,
   MoreHorizontal,
@@ -172,6 +174,21 @@ export function LoadsTable({
         !load.actual_offloading_departure ||
         !load.actual_offloading_departure_verified)
     );
+  }
+
+  /** Returns a list of specific missing/unverified time labels for a delivered load */
+  function getMissingTimes(load: Load): string[] {
+    if (load.status !== "delivered") return [];
+    const missing: string[] = [];
+    if (!load.actual_loading_arrival || !load.actual_loading_arrival_verified)
+      missing.push("Loading Arrival");
+    if (!load.actual_loading_departure || !load.actual_loading_departure_verified)
+      missing.push("Loading Departure");
+    if (!load.actual_offloading_arrival || !load.actual_offloading_arrival_verified)
+      missing.push("Offloading Arrival");
+    if (!load.actual_offloading_departure || !load.actual_offloading_departure_verified)
+      missing.push("Offloading Departure");
+    return missing;
   }
 
   // Quick Add Times removed to simplify UI and avoid accidental overwrites
@@ -337,32 +354,47 @@ export function LoadsTable({
                       className={cn(
                         "cursor-pointer transition-colors hover:bg-muted/30",
                         "animate-fade-in",
+                        needsVerification(load) && "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500 hover:bg-amber-100/70 dark:hover:bg-amber-950/30",
                       )}
                       style={{ animationDelay: `${index * 50}ms` }}
                       onClick={() => onLoadClick?.(load)}
                     >
                       <TableCell>
                         <div>
-                          {needsVerification(load) && (
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="destructive" className="text-xs">
-                                Needs Verification
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setLoadForDelivery(load);
-                                  setVerificationOnly(true);
-                                  setDeliveryDialogOpen(true);
-                                }}
-                              >
-                                Verify Times
-                              </Button>
-                            </div>
-                          )}
+                          {needsVerification(load) && (() => {
+                            const missing = getMissingTimes(load);
+                            return (
+                              <div className="mb-2 p-2 rounded-md bg-amber-100/80 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                                    {missing.length === 4 ? 'No actual times recorded' : `${missing.length} time${missing.length !== 1 ? 's' : ''} unverified`}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-xs ml-auto border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setLoadForDelivery(load);
+                                      setVerificationOnly(true);
+                                      setDeliveryDialogOpen(true);
+                                    }}
+                                  >
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Verify Times
+                                  </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {missing.map((m) => (
+                                    <Badge key={m} variant="outline" className="text-[10px] py-0 px-1.5 border-amber-400 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40">
+                                      {m}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
                           <p className="font-semibold text-foreground">
                             {load.load_id}
                           </p>
