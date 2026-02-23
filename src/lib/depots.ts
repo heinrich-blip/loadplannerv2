@@ -13,7 +13,27 @@ export interface Depot {
   longitude: number;
   type: "depot" | "warehouse" | "market" | "border" | "farm" | "customer";
   country: "Zimbabwe" | "South Africa" | "Mozambique" | "Zambia" | "Botswana";
-  radius: number; // Geofence radius in meters
+  radius: number; // Geofence radius in meters (used when polygon is not defined)
+  /**
+   * Optional polygon geofence — an array of [latitude, longitude] coordinate pairs
+   * defining the boundary of the depot area. When present, isWithinDepot uses
+   * point-in-polygon instead of the circular radius.
+   *
+   * Rules:
+   * - Minimum 3 points to form a polygon
+   * - Points should be in order (clockwise or counter-clockwise)
+   * - The polygon is automatically closed (last→first edge is implied)
+   * - latitude/longitude center point is still used for distance calculations
+   *
+   * Example rectangle (NW → NE → SE → SW):
+   *   polygon: [
+   *     [-17.840, 31.050],  // NW corner
+   *     [-17.840, 31.060],  // NE corner
+   *     [-17.850, 31.060],  // SE corner
+   *     [-17.850, 31.050],  // SW corner
+   *   ]
+   */
+  polygon?: [number, number][];
 }
 
 /**
@@ -54,11 +74,38 @@ export const DEPOTS: Depot[] = [
   {
     id: "bv",
     name: "BV",
-    latitude: -19.18134742,
-    longitude: 32.6994949,
+    latitude: -19.18145660,
+    longitude: 32.79458267,
     type: "farm",
     country: "Zimbabwe",
-    radius: 500,
+    radius: 2500,
+    // 3km-wide corridor (1.5km each side) following the road through BV farm
+    polygon: [
+      // Left side of road
+      [-19.15322280, 32.85968967],
+      [-19.16486174, 32.86067196],
+      [-19.17844144, 32.85436184],
+      [-19.18857468, 32.84481543],
+      [-19.19322278, 32.84186454],
+      [-19.19994241, 32.83003739],
+      [-19.20728813, 32.81308618],
+      [-19.20260145, 32.75887887],
+      [-19.20756133, 32.72767889],
+      [-19.20493217, 32.71456586],
+      [-19.19733084, 32.69618007],
+      // Right side of road (reversed)
+      [-19.17265006, 32.70771862],
+      [-19.17932660, 32.72356648],
+      [-19.18059139, 32.72844540],
+      [-19.17563960, 32.75784133],
+      [-19.18074656, 32.80795900],
+      [-19.17593844, 32.81699578],
+      [-19.17463370, 32.82116114],
+      [-19.17373549, 32.82095882],
+      [-19.16357149, 32.83052818],
+      [-19.16062894, 32.83246338],
+      [-19.15659824, 32.83135315],
+    ],
   },
   {
     id: "cbc",
@@ -599,7 +646,9 @@ export function findDepotByName(name: string, extraLocations?: Depot[]): Depot |
 }
 
 /**
- * Check if a point (lat/lng) is within a depot's geofence
+ * Check if a point (lat/lng) is within a depot's geofence.
+ * Uses polygon containment (ray-casting) when the depot has a polygon defined,
+ * otherwise falls back to the circular radius check.
  */
 export function isWithinDepot(
   lat: number,
@@ -607,8 +656,13 @@ export function isWithinDepot(
   depot: Depot
 ): boolean {
   if (!depot || !depot.latitude || !depot.longitude) return false;
-  
-  // Calculate distance in kilometers, convert to meters
+
+  // If the depot has a polygon, use point-in-polygon test
+  if (depot.polygon && depot.polygon.length >= 3) {
+    return isPointInPolygon(lat, lng, depot.polygon);
+  }
+
+  // Fallback: circular radius check
   const distanceKm = calculateDistance(
     lat, lng,
     depot.latitude, depot.longitude
@@ -616,6 +670,34 @@ export function isWithinDepot(
   const distanceMeters = distanceKm * 1000;
   
   return distanceMeters <= depot.radius;
+}
+
+/**
+ * Ray-casting algorithm to check if a point is inside a polygon.
+ * Works with any simple (non-self-intersecting) polygon.
+ * @param lat  - Point latitude
+ * @param lng  - Point longitude
+ * @param poly - Array of [latitude, longitude] pairs defining the polygon boundary
+ */
+export function isPointInPolygon(
+  lat: number,
+  lng: number,
+  poly: [number, number][]
+): boolean {
+  let inside = false;
+  const n = poly.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const [yi, xi] = poly[i];
+    const [yj, xj] = poly[j];
+    // Check if the ray from (lat, lng) → east crosses this edge
+    if (
+      (yi > lat) !== (yj > lat) &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
 }
 
 /**

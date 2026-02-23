@@ -53,6 +53,7 @@ import {
   Circle,
   MapContainer,
   Marker,
+  Polygon as LeafletPolygon,
   Polyline,
   Popup,
   TileLayer,
@@ -911,13 +912,21 @@ export default function LiveTrackingPage() {
                         iconSize: [28, 28],
                         iconAnchor: [14, 14],
                       });
+                      const color = depot.type === 'depot' ? '#059669' : '#9333ea';
                       return (
                         <React.Fragment key={depot.id}>
-                          <Circle
-                            center={[depot.latitude, depot.longitude]}
-                            radius={depot.radius}
-                            pathOptions={{ color: depot.type === 'depot' ? '#059669' : '#9333ea', fillColor: depot.type === 'depot' ? '#059669' : '#9333ea', fillOpacity: 0.2, weight: 2, dashArray: '5, 5' }}
-                          />
+                          {depot.polygon && depot.polygon.length >= 3 ? (
+                            <LeafletPolygon
+                              positions={depot.polygon.map(([lat, lng]) => [lat, lng] as [number, number])}
+                              pathOptions={{ color, fillColor: color, fillOpacity: 0.25, weight: 2 }}
+                            />
+                          ) : (
+                            <Circle
+                              center={[depot.latitude, depot.longitude]}
+                              radius={depot.radius}
+                              pathOptions={{ color, fillColor: color, fillOpacity: 0.2, weight: 2, dashArray: '5, 5' }}
+                            />
+                          )}
                           <Marker position={[depot.latitude, depot.longitude]} icon={depotIcon}>
                             <Popup>
                               <div className="p-1">
