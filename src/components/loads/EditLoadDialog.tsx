@@ -44,11 +44,20 @@ import { type Load, useUpdateLoad } from "@/hooks/useLoads";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, parseISO } from "date-fns";
-import { CalendarIcon, Clock, MapPin, Package, Pencil } from "lucide-react";
+import { AlertTriangle, CalendarIcon, CheckCircle2, Clock, MapPin, Package, Pencil } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import loadFormConfig from "@/constants/loadFormConfig";
+
+/** Extract HH:mm from an ISO timestamp or return the raw string if already HH:mm */
+function formatActualTime(ts: string | null | undefined): string {
+  if (!ts) return '';
+  const isoMatch = ts.match(/T(\d{2}):(\d{2})/);
+  if (isoMatch) return `${isoMatch[1]}:${isoMatch[2]}`;
+  if (/^\d{1,2}:\d{2}$/.test(ts)) return ts.padStart(5, '0');
+  return ts;
+}
 
 const formSchema = z.object({
   clientId: z.string().optional(),
@@ -262,6 +271,26 @@ export function EditLoadDialog({
 
   if (!load) return null;
 
+  // Check if this delivered load needs time verification
+  const isDelivered = load.status === 'delivered';
+  const missingTimes: string[] = [];
+  if (isDelivered) {
+    if (!load.actual_loading_arrival || !load.actual_loading_arrival_verified) missingTimes.push('Loading Arrival');
+    if (!load.actual_loading_departure || !load.actual_loading_departure_verified) missingTimes.push('Loading Departure');
+    if (!load.actual_offloading_arrival || !load.actual_offloading_arrival_verified) missingTimes.push('Offloading Arrival');
+    if (!load.actual_offloading_departure || !load.actual_offloading_departure_verified) missingTimes.push('Offloading Departure');
+  }
+  const needsVerification = isDelivered && missingTimes.length > 0;
+
+  // Format actual times for display
+  const actualTimes = {
+    loadingArrival: formatActualTime(load.actual_loading_arrival),
+    loadingDeparture: formatActualTime(load.actual_loading_departure),
+    offloadingArrival: formatActualTime(load.actual_offloading_arrival),
+    offloadingDeparture: formatActualTime(load.actual_offloading_departure),
+  };
+  const hasAnyActualTime = !!(load.actual_loading_arrival || load.actual_loading_departure || load.actual_offloading_arrival || load.actual_offloading_departure);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -276,6 +305,28 @@ export function EditLoadDialog({
             Update load details and assignment
           </DialogDescription>
         </DialogHeader>
+
+        {/* Alert banner for delivered loads missing actual times */}
+        {needsVerification && (
+          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400 dark:border-amber-600">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                {missingTimes.length === 4 ? 'No actual times recorded' : `${missingTimes.length} time${missingTimes.length !== 1 ? 's' : ''} missing or unverified`}
+              </span>
+            </div>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
+              This load is marked as delivered but has missing actual times. Please use the "Verify Times" button on the Loads table to add them.
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {missingTimes.map((m) => (
+                <span key={m} className="text-[10px] px-1.5 py-0.5 rounded border border-amber-400 text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40">
+                  {m}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <Form {...form}>
           <form
@@ -546,6 +597,47 @@ export function EditLoadDialog({
                     )}
                   />
                 </div>
+
+                {/* Actual Times (read-only) */}
+                {(isDelivered || hasAnyActualTime) && (
+                  <>
+                    <div className="border-t border-green-200 dark:border-green-800 pt-3 mt-3">
+                      <Label className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">Actual Times</Label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
+                          <Clock className="h-3 w-3" />
+                          Actual Arrival
+                          {load.actual_loading_arrival_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                        </Label>
+                        <div className={cn(
+                          "h-9 px-3 py-2 rounded-md border text-sm flex items-center",
+                          actualTimes.loadingArrival
+                            ? "bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200 font-medium"
+                            : "bg-muted/50 border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 italic"
+                        )}>
+                          {actualTimes.loadingArrival || 'Not recorded'}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
+                          <Clock className="h-3 w-3" />
+                          Actual Departure
+                          {load.actual_loading_departure_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                        </Label>
+                        <div className={cn(
+                          "h-9 px-3 py-2 rounded-md border text-sm flex items-center",
+                          actualTimes.loadingDeparture
+                            ? "bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200 font-medium"
+                            : "bg-muted/50 border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 italic"
+                        )}>
+                          {actualTimes.loadingDeparture || 'Not recorded'}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -637,6 +729,47 @@ export function EditLoadDialog({
                     )}
                   />
                 </div>
+
+                {/* Actual Times (read-only) */}
+                {(isDelivered || hasAnyActualTime) && (
+                  <>
+                    <div className="border-t border-blue-200 dark:border-blue-800 pt-3 mt-3">
+                      <Label className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Actual Times</Label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400">
+                          <Clock className="h-3 w-3" />
+                          Actual Arrival
+                          {load.actual_offloading_arrival_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                        </Label>
+                        <div className={cn(
+                          "h-9 px-3 py-2 rounded-md border text-sm flex items-center",
+                          actualTimes.offloadingArrival
+                            ? "bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-medium"
+                            : "bg-muted/50 border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 italic"
+                        )}>
+                          {actualTimes.offloadingArrival || 'Not recorded'}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400">
+                          <Clock className="h-3 w-3" />
+                          Actual Departure
+                          {load.actual_offloading_departure_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                        </Label>
+                        <div className={cn(
+                          "h-9 px-3 py-2 rounded-md border text-sm flex items-center",
+                          actualTimes.offloadingDeparture
+                            ? "bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-medium"
+                            : "bg-muted/50 border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 italic"
+                        )}>
+                          {actualTimes.offloadingDeparture || 'Not recorded'}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
