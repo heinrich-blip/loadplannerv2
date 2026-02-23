@@ -207,6 +207,7 @@ async function applyVarianceFormatting(
   varianceMap: { row: number; col: number; isLate: boolean; isEarly: boolean }[],
   totalRows: number,
   totalCols: number,
+  weekHeaderRows: number[] = [],
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const requests: any[] = [];
@@ -259,6 +260,62 @@ async function applyVarianceFormatting(
           },
         },
         fields: 'userEnteredFormat(backgroundColor,textFormat)',
+      },
+    });
+  }
+
+  // Week header rows: dark blue background, white bold text, merge across all columns
+  for (const weekRow of weekHeaderRows) {
+    // Merge cells across the full width
+    requests.push({
+      mergeCells: {
+        range: {
+          sheetId,
+          startRowIndex: weekRow,
+          endRowIndex: weekRow + 1,
+          startColumnIndex: 0,
+          endColumnIndex: totalCols,
+        },
+        mergeType: 'MERGE_ALL',
+      },
+    });
+    // Style: dark blue bg, white bold text, slightly larger font
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId,
+          startRowIndex: weekRow,
+          endRowIndex: weekRow + 1,
+          startColumnIndex: 0,
+          endColumnIndex: totalCols,
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: { red: 0.16, green: 0.25, blue: 0.45 },  // dark navy blue
+            textFormat: {
+              bold: true,
+              fontSize: 11,
+              foregroundColor: { red: 1.0, green: 1.0, blue: 1.0 },  // white text
+            },
+            horizontalAlignment: 'LEFT',
+            verticalAlignment: 'MIDDLE',
+            padding: { top: 4, bottom: 4 },
+          },
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding)',
+      },
+    });
+    // Set row height slightly taller for week headers
+    requests.push({
+      updateDimensionProperties: {
+        range: {
+          sheetId,
+          dimension: 'ROWS',
+          startIndex: weekRow,
+          endIndex: weekRow + 1,
+        },
+        properties: { pixelSize: 32 },
+        fields: 'pixelSize',
       },
     });
   }
@@ -338,6 +395,34 @@ function formatDate(isoDate: string | null | undefined): string {
   } catch {
     return isoDate;
   }
+}
+
+/** Get the ISO week number for a date */
+function getISOWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+/** Get Monday of the ISO week containing the given date */
+function getWeekMonday(date: Date): Date {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - day + 1);
+  return d;
+}
+
+/** Format a week header label like "Week 8 — 17 Feb – 23 Feb 2026" */
+function weekLabel(date: Date): string {
+  const weekNum = getISOWeek(date);
+  const monday = getWeekMonday(date);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fmtDay = (d: Date) => `${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
+  return `Week ${weekNum} — ${fmtDay(monday)} – ${fmtDay(sunday)} ${sunday.getUTCFullYear()}`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -464,12 +549,15 @@ serve(async (req) => {
 
     // Track cells that need red/green formatting: { row, col, isLate, isEarly }
     const varianceCells: { row: number; col: number; isLate: boolean; isEarly: boolean }[] = [];
+    // Track which rows are week-header rows (for formatting)
+    const weekHeaderRows: number[] = [];
 
     // Variance column indices (0-based): 9, 12, 15, 18
     const VARIANCE_COL_INDICES = [9, 12, 15, 18];
 
+    // Build per-load row data first, then group by week
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const dataRows = loads.map((load: any, loadIndex: number) => {
+    const loadRows: { weekKey: string; weekLabelText: string; variances: { diffMin: number | null; isLate: boolean }[]; row: any[] }[] = loads.map((load: any) => {
       const tw = parseTimeWindow(load.time_window);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const vehicle = (load.fleet_vehicles as any);
@@ -485,20 +573,6 @@ serve(async (req) => {
       const ldVar = computeVariance(tw.origin.plannedDeparture, actualLD);
       const oaVar = computeVariance(tw.destination.plannedArrival, actualOA);
       const odVar = computeVariance(tw.destination.plannedDeparture, actualOD);
-
-      // Record variance cells for formatting (row is loadIndex + 1 because of header)
-      const rowIndex = loadIndex + 1;
-      const variances = [laVar, ldVar, oaVar, odVar];
-      variances.forEach((v, vi) => {
-        if (v.diffMin !== null && v.diffMin !== 0) {
-          varianceCells.push({
-            row: rowIndex,
-            col: VARIANCE_COL_INDICES[vi],
-            isLate: v.isLate,
-            isEarly: !v.isLate,
-          });
-        }
-      });
 
       const notes: string[] = [];
       const n1 = buildNote('Loading Arrival', tw.origin.plannedArrival, actualLA);
@@ -523,33 +597,73 @@ serve(async (req) => {
         varianceReason = perField.length > 0 ? perField.join(' | ') : (rawTw.varianceReason || '');
       } catch { /* ignore */ }
 
-      return [
-        load.load_id,
-        load.status,
-        vehicle?.vehicle_id || '',
-        driver?.name || '',
-        load.origin,
-        load.destination,
-        formatDate(load.loading_date),
-        tw.origin.plannedArrival || '',
-        formatTime(actualLA),
-        laVar.label,
-        tw.origin.plannedDeparture || '',
-        formatTime(actualLD),
-        ldVar.label,
-        tw.destination.plannedArrival || '',
-        formatTime(actualOA),
-        oaVar.label,
-        tw.destination.plannedDeparture || '',
-        formatTime(actualOD),
-        odVar.label,
-        varianceReason,
-        notes.join(' | '),
-        new Date().toISOString(),
-      ];
+      // Compute week key for grouping (YYYY-Www)
+      const loadDate = new Date(load.loading_date);
+      const wk = getISOWeek(loadDate);
+      const yr = loadDate.getFullYear();
+      const weekKey = `${yr}-W${String(wk).padStart(2, '0')}`;
+      const weekLabelText = weekLabel(loadDate);
+
+      return {
+        weekKey,
+        weekLabelText,
+        variances: [laVar, ldVar, oaVar, odVar],
+        row: [
+          load.load_id,
+          load.status,
+          vehicle?.vehicle_id || '',
+          driver?.name || '',
+          load.origin,
+          load.destination,
+          formatDate(load.loading_date),
+          tw.origin.plannedArrival || '',
+          formatTime(actualLA),
+          laVar.label,
+          tw.origin.plannedDeparture || '',
+          formatTime(actualLD),
+          ldVar.label,
+          tw.destination.plannedArrival || '',
+          formatTime(actualOA),
+          oaVar.label,
+          tw.destination.plannedDeparture || '',
+          formatTime(actualOD),
+          odVar.label,
+          varianceReason,
+          notes.join(' | '),
+          new Date().toISOString(),
+        ],
+      };
     });
 
-    const allRows = [headerRow, ...dataRows];
+    // Assemble final rows with week headers inserted
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allRows: any[][] = [headerRow];
+    let currentWeek = '';
+    const colCount = headerRow.length;
+
+    for (const item of loadRows) {
+      if (item.weekKey !== currentWeek) {
+        currentWeek = item.weekKey;
+        // Insert a week header row — text in first cell, rest empty
+        const weekRow = new Array(colCount).fill('');
+        weekRow[0] = item.weekLabelText;
+        weekHeaderRows.push(allRows.length); // 0-based row index
+        allRows.push(weekRow);
+      }
+      // Track variance cells (adjust for actual row position)
+      const rowIndex = allRows.length; // row index in the sheet
+      item.variances.forEach((v: { diffMin: number | null; isLate: boolean }, vi: number) => {
+        if (v.diffMin !== null && v.diffMin !== 0) {
+          varianceCells.push({
+            row: rowIndex,
+            col: VARIANCE_COL_INDICES[vi],
+            isLate: v.isLate,
+            isEarly: !v.isLate,
+          });
+        }
+      });
+      allRows.push(item.row);
+    }
 
     // Authenticate with Google and push data
     const accessToken = await getGoogleAccessToken();
@@ -557,17 +671,17 @@ serve(async (req) => {
     await clearSheet(accessToken, SHEET_NAME);
     await updateSheet(accessToken, SHEET_NAME, allRows);
 
-    // Apply red/green formatting to variance cells
+    // Apply red/green formatting to variance cells + week header styling
     const sheetId = await getSheetId(accessToken, SHEET_NAME);
     if (sheetId !== null) {
-      await applyVarianceFormatting(accessToken, sheetId, varianceCells, allRows.length, headerRow.length);
+      await applyVarianceFormatting(accessToken, sheetId, varianceCells, allRows.length, headerRow.length, weekHeaderRows);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Synced ${dataRows.length} loads to Google Sheets`,
-        rowsSynced: dataRows.length,
+        message: `Synced ${loadRows.length} loads to Google Sheets`,
+        rowsSynced: loadRows.length,
         spreadsheetId: SPREADSHEET_ID,
         sheetName: SHEET_NAME,
       }),
