@@ -32,7 +32,7 @@ import
     type TelematicsAsset,
   } from "@/lib/telematicsGuru";
 import { parseTimeWindow } from "@/lib/timeWindow";
-import { cn, getLocationDisplayName } from "@/lib/utils";
+import { cn, getLocationDisplayName, safeFormatDate } from "@/lib/utils";
 import { endOfWeek, format, formatDistanceToNow, parseISO, startOfWeek } from "date-fns";
 import
   {
@@ -1224,7 +1224,7 @@ function LoadCard({
                     <span className="text-slate-500 dark:text-slate-400 font-medium">
                       {load.actual_offloading_departure 
                         ? formatTimestamp(load.actual_offloading_departure) 
-                        : format(parseISO(load.loading_date), "dd MMM")}
+                        : safeFormatDate(load.loading_date, "dd MMM")}
                     </span>
                   </>
                 ) : isTracking ? (
@@ -1239,11 +1239,11 @@ function LoadCard({
                   <>
                     <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
                       <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                      <span className="font-medium">{format(parseISO(load.loading_date), "dd MMM")}</span>
+                      <span className="font-medium">{safeFormatDate(load.loading_date, "dd MMM")}</span>
                     </div>
                     <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                       <Clock className="h-3 w-3 text-slate-400" />
-                      <span className="font-semibold text-[10px] text-slate-600 dark:text-slate-400">{format(parseISO(load.loading_date), "HH:mm")}</span>
+                      <span className="font-semibold text-[10px] text-slate-600 dark:text-slate-400">{safeFormatDate(load.loading_date, "HH:mm")}</span>
                     </div>
                   </>
                 )}
@@ -1289,7 +1289,7 @@ function LoadCard({
               )}
               <span className="text-slate-500 dark:text-slate-400">Loading</span>
               <span className="font-medium text-slate-700 dark:text-slate-300">
-                {format(parseISO(load.loading_date), "dd MMM HH:mm")}
+                {safeFormatDate(load.loading_date, "dd MMM HH:mm")}
               </span>
             </div>
             {isTracking && load.progressData && (

@@ -4,11 +4,10 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClient, useClientActiveLoads, useClientLoads } from '@/hooks/useClientLoads';
 import type { Load } from '@/hooks/useLoads';
-import { getLocationDisplayName, cn } from '@/lib/utils';
+import { getLocationDisplayName, cn, safeFormatDate } from '@/lib/utils';
 import {
   endOfMonth,
   endOfWeek,
-  format,
   formatDistanceToNow,
   parseISO,
   startOfMonth,
@@ -394,9 +393,9 @@ function UpcomingLoadItem({ load }: { load: Load }) {
         </div>
       </div>
       <div className="text-right">
-        <p className="text-sm font-medium">{format(parseISO(load.loading_date), 'dd MMM')}</p>
+        <p className="text-sm font-medium">{safeFormatDate(load.loading_date, 'dd MMM')}</p>
         <p className="text-xs text-muted-foreground">
-          {formatDistanceToNow(parseISO(load.loading_date), { addSuffix: true })}
+          {(() => { try { return formatDistanceToNow(parseISO(load.loading_date), { addSuffix: true }); } catch { return '—'; } })()}
         </p>
       </div>
     </div>

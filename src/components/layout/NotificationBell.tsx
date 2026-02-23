@@ -12,8 +12,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import
   {
-    ExpiryAlert,
-    MissingDocument,
+    type ExpiryAlert,
+    type MissingDocument,
     useExpiryAlerts,
   } from "@/hooks/useExpiryAlerts";
 import
@@ -23,8 +23,7 @@ import
     exportMissingDocumentsToExcel,
     exportVehicleExpiryAlertsToExcel,
   } from "@/lib/exportExpiryAlerts";
-import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { cn, safeFormatDate } from "@/lib/utils";
 import
   {
     AlertTriangle,
@@ -86,7 +85,7 @@ function AlertItem({ alert }: { alert: ExpiryAlert }) {
             )}
             <span className="opacity-60">
               {" "}
-              • {format(parseISO(alert.expiryDate), "dd/MM/yyyy")}
+              • {safeFormatDate(alert.expiryDate, "dd/MM/yyyy")}
             </span>
           </p>
         </div>

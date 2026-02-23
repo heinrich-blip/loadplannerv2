@@ -1,4 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
+import { format, isValid, parseISO } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -33,4 +34,25 @@ export function formatLastConnected(utcString: string | null | undefined): strin
 
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays}d ago`;
+}
+
+/**
+ * Safely format an ISO date string using date-fns `format`.
+ * Returns `fallback` (default "—") when the input is null, undefined,
+ * empty, or an invalid/unparseable date – preventing the
+ * `RangeError: Invalid time value` that `format()` throws on bad dates.
+ */
+export function safeFormatDate(
+  dateStr: string | null | undefined,
+  formatStr: string,
+  fallback = "—",
+): string {
+  if (!dateStr) return fallback;
+  try {
+    const d = parseISO(dateStr);
+    if (!isValid(d)) return fallback;
+    return format(d, formatStr);
+  } catch {
+    return fallback;
+  }
 }

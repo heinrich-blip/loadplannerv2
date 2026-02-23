@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/table';
 import { useClientLoads } from '@/hooks/useClientLoads';
 import type { Load } from '@/hooks/useLoads';
-import { getLocationDisplayName } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { getLocationDisplayName, safeFormatDate } from '@/lib/utils';
+import { parseISO } from 'date-fns';
 import {
   Calendar,
   CheckCircle2,
@@ -324,13 +324,13 @@ function LoadRow({ load }: { load: Load }) {
       <TableCell>
         <div className="flex items-center gap-1.5 text-sm">
           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-          {format(parseISO(load.loading_date), 'dd MMM yyyy')}
+          {safeFormatDate(load.loading_date, 'dd MMM yyyy')}
         </div>
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5 text-sm">
           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-          {format(parseISO(load.offloading_date), 'dd MMM yyyy')}
+          {safeFormatDate(load.offloading_date, 'dd MMM yyyy')}
         </div>
       </TableCell>
       <TableCell>

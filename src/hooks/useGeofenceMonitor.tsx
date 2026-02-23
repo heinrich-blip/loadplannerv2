@@ -227,7 +227,7 @@ export function GeofenceMonitorProvider({ children }: { children: ReactNode }) {
       if (gateVehicleId !== "unassigned") {
         const notDeliveredForVehicle = loadsWithAssets
           .filter((l) => (l.fleet_vehicle?.vehicle_id || "unassigned") === gateVehicleId && l.status !== "delivered")
-          .sort((a, b) => parseISO(a.loading_date).getTime() - parseISO(b.loading_date).getTime());
+          .sort((a, b) => (parseISO(a.loading_date).getTime() || 0) - (parseISO(b.loading_date).getTime() || 0));
         const earliestNotDelivered = notDeliveredForVehicle[0];
         if (earliestNotDelivered && earliestNotDelivered.id !== load.id) {
           continue;

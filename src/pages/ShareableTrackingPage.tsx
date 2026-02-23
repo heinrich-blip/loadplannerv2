@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { getLocationDisplayName } from "@/lib/utils";
+import { getLocationDisplayName, safeFormatDate } from "@/lib/utils";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -588,14 +588,14 @@ export default function ShareableTrackingPage() {
                     <Calendar className="w-4 h-4 text-gray-400" />
                     <span className="font-medium">Loading:</span>
                     <span>
-                      {new Date(load.loading_date).toLocaleDateString()}
+                      {safeFormatDate(load.loading_date, "dd MMM yyyy")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="w-4 h-4 text-gray-400" />
                     <span className="font-medium">Expected Arrival:</span>
                     <span>
-                      {new Date(load.offloading_date).toLocaleDateString()}
+                      {safeFormatDate(load.offloading_date, "dd MMM yyyy")}
                     </span>
                   </div>
                 </div>

@@ -36,7 +36,8 @@ import { useClients, useDeleteClient } from '@/hooks/useClients';
 import { useLoads } from '@/hooks/useLoads';
 import { useToast } from '@/hooks/use-toast';
 import * as timeWindowLib from '@/lib/timeWindow'; // Use the shared utility
-import { format, parseISO } from 'date-fns';
+import { safeFormatDate } from '@/lib/utils';
+import { parseISO } from 'date-fns';
 import {
   Building2,
   Eye,
@@ -348,7 +349,7 @@ export default function ClientsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {format(parseISO(client.created_at), 'dd MMM yyyy')}
+                          {safeFormatDate(client.created_at, 'dd MMM yyyy')}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>

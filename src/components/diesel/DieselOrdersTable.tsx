@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  DieselOrder,
+  type DieselOrder,
   useApproveDieselOrder,
   useDeleteDieselOrder,
   useFulfillDieselOrder,
@@ -25,7 +25,7 @@ import {
   exportDieselOrderToPdf,
   shareViaWhatsApp,
 } from "@/lib/exportDieselOrderToPdf";
-import { format, parseISO } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import {
   CheckCircle,
   Download,
@@ -219,7 +219,7 @@ export function DieselOrdersTable({
                 </Badge>
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {format(parseISO(order.created_at), "dd MMM yyyy")}
+                {safeFormatDate(order.created_at, "dd MMM yyyy")}
               </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>

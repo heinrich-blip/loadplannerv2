@@ -31,7 +31,7 @@ import
   } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { type Load, useUpdateLoad } from '@/hooks/useLoads';
-import { cn, getLocationDisplayName } from '@/lib/utils';
+import { cn, getLocationDisplayName, safeFormatDate } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format, parseISO } from 'date-fns';
 import { CalendarIcon, MapPin, Package, RotateCcw, Truck } from 'lucide-react';
@@ -202,7 +202,7 @@ export function AddBackloadDialog({ open, onOpenChange, load }: AddBackloadDialo
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">Offloading Date</p>
-                <p className="font-medium">{format(parseISO(load.offloading_date), 'dd MMM yyyy')}</p>
+                <p className="font-medium">{safeFormatDate(load.offloading_date, 'dd MMM yyyy')}</p>
               </div>
             </div>
           </CardContent>

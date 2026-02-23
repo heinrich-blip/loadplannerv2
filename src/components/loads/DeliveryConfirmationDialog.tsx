@@ -2,7 +2,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import * as timeWindowLib from '@/lib/timeWindow';
-import type { Json } from '@/integrations/supabase/types';
 import
   {
     Dialog,
@@ -33,12 +32,12 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { type Load, useCreateLoad, useUpdateLoad } from '@/hooks/useLoads';
-import { getLocationDisplayName } from '@/lib/utils';
+import { getLocationDisplayName, safeFormatDate } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { addDays, format, formatISO, parseISO } from 'date-fns';
 import { AlertTriangle, ArrowRight, CheckCircle, CheckCircle2, Clock, MapPin, RotateCcw, Truck } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -165,6 +164,7 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
   const updateLoad = useUpdateLoad();
   const createLoad = useCreateLoad();
   const [showMissingTimesWarning, setShowMissingTimesWarning] = useState(false);
+  const formInitRef = useRef(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -190,9 +190,14 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
 
   const createBackload = form.watch('createBackload');
 
-  // Reset form when load changes
+  // Only reset form once when the dialog first opens (not on every query refetch)
   useEffect(() => {
-    if (load && open) {
+    if (!open) {
+      formInitRef.current = false;
+      return;
+    }
+    if (load && open && !formInitRef.current) {
+      formInitRef.current = true;
       setShowMissingTimesWarning(false);
       const times = timeWindowLib.parseTimeWindow(load.time_window);
       // Extract existing per-field notes from time_window
@@ -265,7 +270,8 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
     };
 
     // Prepare main fields for actual times (ISO string if date provided)
-    const mainFields: Record<string, string | boolean> = {};
+    // Use Partial<Load> so Supabase accepts all fields with correct types
+    const mainFields: Partial<Load> = {};
     if (data.originActualArrival) mainFields.actual_loading_arrival = combineDateTime(load.loading_date, data.originActualArrival);
     if (data.originActualDeparture) mainFields.actual_loading_departure = combineDateTime(load.loading_date, data.originActualDeparture);
     if (data.destActualArrival) mainFields.actual_offloading_arrival = combineDateTime(load.offloading_date, data.destActualArrival);
@@ -286,10 +292,16 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
       ? `${load.notes || ''}\n\n[Delivery Notes - ${format(new Date(), 'dd MMM yyyy HH:mm')}]\n${data.deliveryNotes}`.trim()
       : load.notes;
 
+    console.log('[DeliveryConfirmation] Saving load update:', {
+      loadId: load.id,
+      actualFieldsCount: Object.keys(mainFields).length,
+      mainFields,
+    });
+
     // First, update the original load as delivered
     updateLoad.mutate({
       id: load.id,
-      time_window: timeData as unknown as Json,
+      time_window: timeData as Load['time_window'],
       status: 'delivered',
       notes: updatedNotes,
       ...mainFields,
@@ -385,7 +397,8 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
     };
 
     // Prepare main fields for actual times (ISO string if date provided)
-    const mainFields: Record<string, string | boolean> = {};
+    // Use Partial<Load> so Supabase accepts all fields with correct types
+    const mainFields: Partial<Load> = {};
     if (data.originActualArrival) mainFields.actual_loading_arrival = combineDateTime(load.loading_date, data.originActualArrival);
     if (data.originActualDeparture) mainFields.actual_loading_departure = combineDateTime(load.loading_date, data.originActualDeparture);
     if (data.destActualArrival) mainFields.actual_offloading_arrival = combineDateTime(load.offloading_date, data.destActualArrival);
@@ -401,9 +414,15 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
     if (data.destActualArrival) mainFields.actual_offloading_arrival_source = 'manual';
     if (data.destActualDeparture) mainFields.actual_offloading_departure_source = 'manual';
 
+    console.log('[DeliveryConfirmation] Saving times update:', {
+      loadId: load.id,
+      actualFieldsCount: Object.keys(mainFields).length,
+      mainFields,
+    });
+
     updateLoad.mutate({
       id: load.id,
-      time_window: timeData as unknown as Json,
+      time_window: timeData as Load['time_window'],
       ...mainFields,
     }, {
       onSuccess: () => {
@@ -442,8 +461,8 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
               <span className="font-medium">{getLocationDisplayName(load.destination)}</span>
             </div>
             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-              <span>Loading: {format(parseISO(load.loading_date), 'dd MMM yyyy')}</span>
-              <span>Offloading: {format(parseISO(load.offloading_date), 'dd MMM yyyy')}</span>
+              <span>Loading: {safeFormatDate(load.loading_date, 'dd MMM yyyy')}</span>
+              <span>Offloading: {safeFormatDate(load.offloading_date, 'dd MMM yyyy')}</span>
             </div>
           </div>
           <Badge variant="outline" className="text-xs">

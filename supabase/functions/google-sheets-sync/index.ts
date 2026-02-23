@@ -349,10 +349,22 @@ async function applyVarianceFormatting(
 
 function timeToMinutes(time: string | undefined | null): number | null {
   if (!time) return null;
+  // Plain HH:mm — parse directly
   const hm = time.match(/^(\d{1,2}):(\d{2})$/);
   if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
-  const iso = time.match(/T(\d{2}):(\d{2})/);
-  if (iso) return parseInt(iso[1], 10) * 60 + parseInt(iso[2], 10);
+  // ISO timestamp — convert to SAST (UTC+2) before extracting hours
+  const d = new Date(time);
+  if (!isNaN(d.getTime())) {
+    const parts = new Intl.DateTimeFormat('en-ZA', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Johannesburg',
+    }).formatToParts(d);
+    const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+    const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+    return h * 60 + m;
+  }
   return null;
 }
 
@@ -380,14 +392,20 @@ function formatTime(ts: string | null | undefined): string {
   try {
     // Simple "HH:mm" format — return as-is (padded)
     if (/^\d{1,2}:\d{2}$/.test(ts)) return ts.padStart(5, '0');
-    // ISO format — extract local time directly from the string
-    // This avoids the UTC conversion bug: new Date("...T19:00:00+02:00").getHours() returns 17 in UTC
-    const isoMatch = ts.match(/T(\d{2}):(\d{2})/);
-    if (isoMatch) return `${isoMatch[1]}:${isoMatch[2]}`;
-    // Fallback: parse as Date (only if not ISO — e.g. some other format)
+    // Parse as Date and convert to SAST (Africa/Johannesburg, UTC+2).
+    // The edge function runs in UTC so we must explicitly convert.
     const d = new Date(ts);
     if (isNaN(d.getTime())) return ts;
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    // Use Intl to format in the correct timezone
+    const parts = new Intl.DateTimeFormat('en-ZA', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Johannesburg',
+    }).formatToParts(d);
+    const hour = parts.find(p => p.type === 'hour')?.value ?? '00';
+    const minute = parts.find(p => p.type === 'minute')?.value ?? '00';
+    return `${hour}:${minute}`;
   } catch {
     return ts;
   }

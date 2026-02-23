@@ -21,8 +21,7 @@ import {
   isAuthenticated,
   type TelematicsAsset,
 } from '@/lib/telematicsGuru';
-import { getLocationDisplayName, cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { getLocationDisplayName, cn, safeFormatDate } from '@/lib/utils';
 import {
   AlertCircle,
   Box,
@@ -346,7 +345,7 @@ export default function ClientDeliveriesPage() {
                       <div className="text-right">
                         <p className="text-sm font-medium text-green-600">Delivered</p>
                         <p className="text-xs text-muted-foreground">
-                          {format(parseISO(load.offloading_date), 'dd MMM yyyy')}
+                          {safeFormatDate(load.offloading_date, 'dd MMM yyyy')}
                         </p>
                       </div>
                     </div>
@@ -427,11 +426,11 @@ function DeliveryCard({ load }: { load: LoadWithETA }) {
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                Loading: {format(parseISO(load.loading_date), 'dd MMM')}
+                Loading: {safeFormatDate(load.loading_date, 'dd MMM')}
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                Expected: {format(parseISO(load.offloading_date), 'dd MMM')}
+                Expected: {safeFormatDate(load.offloading_date, 'dd MMM')}
               </div>
             </div>
           </div>

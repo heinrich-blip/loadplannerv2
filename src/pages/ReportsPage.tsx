@@ -25,6 +25,7 @@ import
   } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseBackloadInfo, useLoads } from "@/hooks/useLoads";
+import { safeFormatDate } from "@/lib/utils";
 import { exportReportsToPdf, exportVarianceToPdf } from "@/lib/exportReportsToPdf";
 import { exportVarianceToExcel } from "@/lib/exportVarianceToExcel";
 import { DistributionTab } from "@/components/reports/DistributionTab";
@@ -237,7 +238,7 @@ export default function ReportsPage() {
     }>();
 
     for (const load of filteredLoads) {
-      const key = format(parseISO(load.loading_date), 'yyyy-MM-dd');
+      const key = safeFormatDate(load.loading_date, 'yyyy-MM-dd', 'unknown');
       const times = timeWindowLib.parseTimeWindow(load.time_window);
       if (!times) continue;
       const oa = calculateVarianceMinutes(times.origin.plannedArrival, times.origin.actualArrival);

@@ -31,9 +31,9 @@ import {
 } from "@/hooks/useDieselOrders";
 import { useDrivers } from "@/hooks/useDrivers";
 import { useFleetVehicles } from "@/hooks/useFleetVehicles";
-import { Load, useLoads } from "@/hooks/useLoads";
+import { type Load, useLoads } from "@/hooks/useLoads";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, parseISO } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { Fuel, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -88,7 +88,7 @@ export function CreateDieselOrderDialog({
 
   const watchedFuelStation = form.watch("fuel_station");
   const watchedLoadId = form.watch("load_id");
-  const watchedDriverId = form.watch("driver_id");
+  const _watchedDriverId = form.watch("driver_id");
 
   // Update selected load when load_id changes
   useEffect(() => {
@@ -206,7 +206,7 @@ export function CreateDieselOrderDialog({
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {load.origin} → {load.destination} |{" "}
-                                {format(parseISO(load.loading_date), "dd MMM")}
+                                {safeFormatDate(load.loading_date, "dd MMM")}
                               </span>
                             </div>
                           </SelectItem>
@@ -233,8 +233,8 @@ export function CreateDieselOrderDialog({
                   <div>
                     <span className="text-muted-foreground">Date:</span>
                     <span className="ml-2">
-                      {format(
-                        parseISO(selectedLoad.loading_date),
+                      {safeFormatDate(
+                        selectedLoad.loading_date,
                         "dd MMM yyyy",
                       )}
                     </span>

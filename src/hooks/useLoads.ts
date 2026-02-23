@@ -241,6 +241,15 @@ export function useUpdateLoad() {
   
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Load> & { id: string }) => {
+      // Debug: log the raw updates we're sending to Supabase
+      const actualTimeKeys = Object.keys(updates).filter(k => k.startsWith('actual_'));
+      if (actualTimeKeys.length > 0) {
+        console.log('[useUpdateLoad] Sending actual time updates to DB:', {
+          id,
+          actualTimeUpdates: Object.fromEntries(actualTimeKeys.map(k => [k, (updates as Record<string, unknown>)[k]])),
+        });
+      }
+
       const { data, error } = await supabase
         .from('loads')
         .update(updates)
@@ -248,7 +257,24 @@ export function useUpdateLoad() {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('[useUpdateLoad] Supabase error:', error);
+        throw error;
+      }
+
+      // Debug: log what Supabase returned after the update
+      if (actualTimeKeys.length > 0 && data) {
+        const returned = data as Record<string, unknown>;
+        console.log('[useUpdateLoad] DB returned after update:', {
+          actual_loading_arrival: returned.actual_loading_arrival,
+          actual_loading_departure: returned.actual_loading_departure,
+          actual_offloading_arrival: returned.actual_offloading_arrival,
+          actual_offloading_departure: returned.actual_offloading_departure,
+          actual_loading_arrival_source: returned.actual_loading_arrival_source,
+          actual_loading_departure_source: returned.actual_loading_departure_source,
+        });
+      }
+
       return data;
     },
     onSuccess: (_data, variables) => {
@@ -265,6 +291,7 @@ export function useUpdateLoad() {
       if (hasTimeChange) triggerGoogleSheetsSync();
     },
     onError: (error) => {
+      console.error('[useUpdateLoad] Mutation FAILED:', error.message, error);
       toast({ title: 'Failed to update load', description: error.message, variant: 'destructive' });
     },
   });
@@ -373,13 +400,30 @@ export function useGeofenceLoadUpdate() {
       loadNumber?: string;
       onDeliveryComplete?: () => void;
     }) => {
-      // Fetch current load to merge time_window JSON updates
+      // Fetch current load to merge time_window JSON updates AND check manual overrides
       const { data: currentLoad, error: fetchError } = await supabase
         .from('loads')
-        .select('id, time_window')
+        .select(`id, time_window, status,
+          actual_loading_arrival_source, actual_loading_departure_source,
+          actual_offloading_arrival_source, actual_offloading_departure_source`)
         .eq('id', loadId)
         .single();
       if (fetchError) throw fetchError;
+
+      // Map event types to their source column so we can check for manual overrides
+      const sourceFieldMap: Record<GeofenceEventType, string> = {
+        loading_arrival: 'actual_loading_arrival_source',
+        loading_departure: 'actual_loading_departure_source',
+        offloading_arrival: 'actual_offloading_arrival_source',
+        offloading_departure: 'actual_offloading_departure_source',
+      };
+
+      // If this time was set manually, skip the auto-overwrite entirely
+      // (still allow status transitions below)
+      const sourceField = sourceFieldMap[eventType];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const existingSource = (currentLoad as any)?.[sourceField];
+      const isManuallySet = existingSource === 'manual';
 
       const updates: Record<string, unknown> = {};
       const isoTimestamp = timestamp.toISOString();
@@ -410,41 +454,45 @@ export function useGeofenceLoadUpdate() {
       
       switch (eventType) {
         case 'loading_arrival': {
-          updates.actual_loading_arrival = isoTimestamp;
-          updates.actual_loading_arrival_verified = true;
-          updates.actual_loading_arrival_source = 'auto';
-          timeWindowData.origin.actualArrival = isoTimestamp;
+          if (!isManuallySet) {
+            updates.actual_loading_arrival = isoTimestamp;
+            updates.actual_loading_arrival_verified = true;
+            updates.actual_loading_arrival_source = 'auto';
+            timeWindowData.origin!.actualArrival = isoTimestamp;
+          }
           // For pending loads, auto-upgrade to scheduled when truck arrives at origin
           // This handles the case where fleet/driver were assigned but status wasn't updated
-          const { data: loadForStatusCheck } = await supabase
-            .from('loads')
-            .select('status')
-            .eq('id', loadId)
-            .single();
-          if (loadForStatusCheck?.status === 'pending') {
+          const loadStatus = currentLoad?.status;
+          if (loadStatus === 'pending') {
             updates.status = 'scheduled';
           }
           break;
         }
         case 'loading_departure':
-          updates.actual_loading_departure = isoTimestamp;
-          updates.actual_loading_departure_verified = true;
-          updates.actual_loading_departure_source = 'auto';
-          timeWindowData.origin.actualDeparture = isoTimestamp;
+          if (!isManuallySet) {
+            updates.actual_loading_departure = isoTimestamp;
+            updates.actual_loading_departure_verified = true;
+            updates.actual_loading_departure_source = 'auto';
+            timeWindowData.origin!.actualDeparture = isoTimestamp;
+          }
           updates.status = 'in-transit';
           break;
         case 'offloading_arrival':
-          updates.actual_offloading_arrival = isoTimestamp;
-          updates.actual_offloading_arrival_verified = true;
-          updates.actual_offloading_arrival_source = 'auto';
-          timeWindowData.destination.actualArrival = isoTimestamp;
+          if (!isManuallySet) {
+            updates.actual_offloading_arrival = isoTimestamp;
+            updates.actual_offloading_arrival_verified = true;
+            updates.actual_offloading_arrival_source = 'auto';
+            timeWindowData.destination!.actualArrival = isoTimestamp;
+          }
           // Status still in-transit until departure
           break;
         case 'offloading_departure':
-          updates.actual_offloading_departure = isoTimestamp;
-          updates.actual_offloading_departure_verified = true;
-          updates.actual_offloading_departure_source = 'auto';
-          timeWindowData.destination.actualDeparture = isoTimestamp;
+          if (!isManuallySet) {
+            updates.actual_offloading_departure = isoTimestamp;
+            updates.actual_offloading_departure_verified = true;
+            updates.actual_offloading_departure_source = 'auto';
+            timeWindowData.destination!.actualDeparture = isoTimestamp;
+          }
           updates.status = 'delivered';
           break;
       }

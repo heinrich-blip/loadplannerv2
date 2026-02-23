@@ -25,14 +25,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  DieselOrder,
+  type DieselOrder,
   fuelStations,
   useUpdateDieselOrder,
 } from "@/hooks/useDieselOrders";
 import { useDrivers } from "@/hooks/useDrivers";
 import { useFleetVehicles } from "@/hooks/useFleetVehicles";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, parseISO } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { Fuel, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -168,7 +168,7 @@ export function EditDieselOrderDialog({
               <div>
                 <span className="text-muted-foreground">Date:</span>
                 <span className="ml-2">
-                  {format(parseISO(order.load.loading_date), "dd MMM yyyy")}
+                  {safeFormatDate(order.load.loading_date, "dd MMM yyyy")}
                 </span>
               </div>
               {order.load.driver && (

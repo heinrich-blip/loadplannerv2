@@ -43,6 +43,9 @@ export default function LoadsPage() {
 
   const { data: loads = [], isLoading } = useLoads();
 
+  // Keep selectedLoad in sync with fresh query data so dialogs always show latest values
+  const selectedLoadFresh = (selectedLoad && loads.find(l => l.id === selectedLoad.id)) ?? selectedLoad;
+
   const filteredLoads = loads.filter((load) => {
     const matchesSearch =
       !searchQuery ||
@@ -183,13 +186,13 @@ export default function LoadsPage() {
       <EditLoadDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        load={selectedLoad}
+        load={selectedLoadFresh}
       />
 
       <DeliveryConfirmationDialog
         open={deliveryDialogOpen}
         onOpenChange={setDeliveryDialogOpen}
-        load={selectedLoad}
+        load={selectedLoadFresh}
       />
     </MainLayout>
   );

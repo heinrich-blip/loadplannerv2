@@ -45,18 +45,24 @@ import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, parseISO } from "date-fns";
 import { AlertTriangle, CalendarIcon, CheckCircle2, Clock, MapPin, Package, Pencil } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import loadFormConfig from "@/constants/loadFormConfig";
 
-/** Extract HH:mm from an ISO timestamp or return the raw string if already HH:mm */
+/** Extract HH:mm in LOCAL time from an ISO timestamp, or return as-is if already HH:mm.
+ *  Previously used regex on the ISO string which returned UTC hours —
+ *  for SAST (UTC+2) that shifted times back by 2 hours. */
 function formatActualTime(ts: string | null | undefined): string {
   if (!ts) return '';
-  const isoMatch = ts.match(/T(\d{2}):(\d{2})/);
-  if (isoMatch) return `${isoMatch[1]}:${isoMatch[2]}`;
+  // Already a bare HH:mm value — return as-is
   if (/^\d{1,2}:\d{2}$/.test(ts)) return ts.padStart(5, '0');
-  return ts;
+  // ISO string or other date format — parse to Date and extract LOCAL hours
+  const date = new Date(ts);
+  if (isNaN(date.getTime())) return ts;
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
 const formSchema = z.object({
@@ -86,6 +92,11 @@ const formSchema = z.object({
   driverId: z.string().optional(),
   notes: z.string(),
   status: z.enum(["pending", "scheduled", "in-transit", "delivered"]),
+  // Actual time fields (editable)
+  originActualArrival: z.string().optional(),
+  originActualDeparture: z.string().optional(),
+  destActualArrival: z.string().optional(),
+  destActualDeparture: z.string().optional(),
   // Backload fields
   hasBackload: z.boolean().default(false),
   backloadDestination: z.string().optional(),
@@ -129,6 +140,10 @@ export function EditLoadDialog({
       destPlannedDeparture: "11:00",
       notes: "",
       status: "pending",
+      originActualArrival: "",
+      originActualDeparture: "",
+      destActualArrival: "",
+      destActualDeparture: "",
       hasBackload: false,
       backloadDestination: "",
       backloadCargoType: undefined,
@@ -147,9 +162,29 @@ export function EditLoadDialog({
   const availableDestinations =
     selectedCargoType === "Export" ? loadFormConfig.exportDestinations : loadFormConfig.destinations;
 
-  // Reset form when load changes
+  // Track whether the form has been initialized for the current dialog session.
+  // This prevents the 10-second query poll from resetting the form while the
+  // user is editing (each refetch creates a new `load` reference).
+  const formInitRef = useRef(false);
+
   useEffect(() => {
-    if (load && open) {
+    // When the dialog closes, mark as un-initialized for next open
+    if (!open) {
+      formInitRef.current = false;
+      return;
+    }
+    // Only reset the form once when the dialog first opens
+    if (load && open && !formInitRef.current) {
+      formInitRef.current = true;
+      console.log('[EditLoadDialog] Initializing form with load data:', {
+        loadId: load.id,
+        actual_loading_arrival: load.actual_loading_arrival,
+        actual_loading_departure: load.actual_loading_departure,
+        actual_offloading_arrival: load.actual_offloading_arrival,
+        actual_offloading_departure: load.actual_offloading_departure,
+        actual_loading_arrival_source: load.actual_loading_arrival_source,
+        actual_loading_departure_source: load.actual_loading_departure_source,
+      });
       const times = timeWindowLib.parseTimeWindowForForm(load.time_window);
       form.reset({
         clientId: load.client_id || "",
@@ -166,6 +201,10 @@ export function EditLoadDialog({
         driverId: load.driver_id || undefined,
         notes: load.notes || "",
         status: load.status,
+        originActualArrival: formatActualTime(load.actual_loading_arrival) || "",
+        originActualDeparture: formatActualTime(load.actual_loading_departure) || "",
+        destActualArrival: formatActualTime(load.actual_offloading_arrival) || "",
+        destActualDeparture: formatActualTime(load.actual_offloading_departure) || "",
         hasBackload: times.backload?.enabled || false,
         backloadDestination: times.backload?.destination || "",
         backloadCargoType: times.backload?.cargoType as
@@ -188,32 +227,40 @@ export function EditLoadDialog({
   const handleSubmit = (data: FormData) => {
     if (!load) return;
 
-    // Store planned times and backload info in time_window as JSON
-    const timeData: {
-      origin: { plannedArrival: string; plannedDeparture: string };
-      destination: { plannedArrival: string; plannedDeparture: string };
-      backload?: {
-        enabled: boolean;
-        destination: string;
-        cargoType: string;
-        offloadingDate: string;
-        quantities?: {
-          bins: number;
-          crates: number;
-          pallets: number;
-        };
-        notes?: string;
-      };
-    } = {
+    // Parse existing time_window to preserve actual times & notes
+    const currentTimes = timeWindowLib.parseTimeWindow(load.time_window);
+    // Access raw JSON for notes (not in the typed interface)
+    const rawTw = (load.time_window && typeof load.time_window === 'object' && !Array.isArray(load.time_window))
+      ? (load.time_window as Record<string, unknown>)
+      : {};
+    const rawOrigin = (rawTw.origin && typeof rawTw.origin === 'object') ? (rawTw.origin as Record<string, unknown>) : {};
+    const rawDest = (rawTw.destination && typeof rawTw.destination === 'object') ? (rawTw.destination as Record<string, unknown>) : {};
+
+    // Store planned + actual times and backload info in time_window as JSON
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const timeData: Record<string, any> = {
       origin: {
         plannedArrival: data.originPlannedArrival,
         plannedDeparture: data.originPlannedDeparture,
+        actualArrival: data.originActualArrival || currentTimes.origin.actualArrival || '',
+        actualDeparture: data.originActualDeparture || currentTimes.origin.actualDeparture || '',
+        arrivalNote: (typeof rawOrigin.arrivalNote === 'string') ? rawOrigin.arrivalNote : '',
+        departureNote: (typeof rawOrigin.departureNote === 'string') ? rawOrigin.departureNote : '',
       },
       destination: {
         plannedArrival: data.destPlannedArrival,
         plannedDeparture: data.destPlannedDeparture,
+        actualArrival: data.destActualArrival || currentTimes.destination.actualArrival || '',
+        actualDeparture: data.destActualDeparture || currentTimes.destination.actualDeparture || '',
+        arrivalNote: (typeof rawDest.arrivalNote === 'string') ? rawDest.arrivalNote : '',
+        departureNote: (typeof rawDest.departureNote === 'string') ? rawDest.departureNote : '',
       },
     };
+
+    // Preserve backload data if present
+    if (currentTimes.backload) {
+      timeData.backload = currentTimes.backload;
+    }
 
     // Add backload info if enabled
     if (
@@ -243,24 +290,75 @@ export function EditLoadDialog({
     const currentStatus = load.status;
     const newStatus = hasFleetAndDriver && currentStatus === 'pending' ? 'scheduled' : data.status;
 
+    // Helper: combine date + time to create ISO timestamp
+    const combineDateTime = (dateStr: string, timeStr: string) => {
+      const date = parseISO(dateStr);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      date.setHours(hours, minutes, 0, 0);
+      return date.toISOString();
+    };
+
+    // Build actual-time column updates when user has entered/changed a value
+    // Use explicit Partial<Load> type so Supabase accepts all fields correctly
+    const actualFields: Partial<Load> = {};
+    if (data.originActualArrival) {
+      actualFields.actual_loading_arrival = combineDateTime(format(data.loadingDate, 'yyyy-MM-dd'), data.originActualArrival);
+      actualFields.actual_loading_arrival_verified = true;
+      actualFields.actual_loading_arrival_source = 'manual';
+    }
+    if (data.originActualDeparture) {
+      actualFields.actual_loading_departure = combineDateTime(format(data.loadingDate, 'yyyy-MM-dd'), data.originActualDeparture);
+      actualFields.actual_loading_departure_verified = true;
+      actualFields.actual_loading_departure_source = 'manual';
+    }
+    if (data.destActualArrival) {
+      actualFields.actual_offloading_arrival = combineDateTime(format(data.offloadingDate, 'yyyy-MM-dd'), data.destActualArrival);
+      actualFields.actual_offloading_arrival_verified = true;
+      actualFields.actual_offloading_arrival_source = 'manual';
+    }
+    if (data.destActualDeparture) {
+      actualFields.actual_offloading_departure = combineDateTime(format(data.offloadingDate, 'yyyy-MM-dd'), data.destActualDeparture);
+      actualFields.actual_offloading_departure_verified = true;
+      actualFields.actual_offloading_departure_source = 'manual';
+    }
+
+    const payload = {
+      id: load.id,
+      client_id: data.clientId || null,
+      loading_date: format(data.loadingDate, "yyyy-MM-dd"),
+      offloading_date: format(data.offloadingDate, "yyyy-MM-dd"),
+      time_window: timeData as Load['time_window'],
+      origin: data.origin,
+      destination: data.destination,
+      cargo_type: data.cargoType,
+      fleet_vehicle_id: newFleetId,
+      driver_id: newDriverId,
+      notes: data.notes,
+      status: newStatus,
+      ...actualFields,
+    };
+
+    console.log('[EditLoadDialog] Saving load update:', {
+      loadId: load.id,
+      actualFieldsCount: Object.keys(actualFields).length,
+      actualFields,
+    });
+
     updateLoad.mutate(
+      payload,
       {
-        id: load.id,
-        client_id: data.clientId || null,
-        loading_date: format(data.loadingDate, "yyyy-MM-dd"),
-        offloading_date: format(data.offloadingDate, "yyyy-MM-dd"),
-        time_window: timeData,
-        origin: data.origin,
-        destination: data.destination,
-        cargo_type: data.cargoType,
-        fleet_vehicle_id: newFleetId,
-        driver_id: newDriverId,
-        notes: data.notes,
-        status: newStatus,
-      },
-      {
-        onSuccess: () => {
+        onSuccess: (returnedData) => {
+          const rd = returnedData as Record<string, unknown> | null;
+          console.log('[EditLoadDialog] Load update succeeded. DB returned:', {
+            actual_loading_arrival: rd?.actual_loading_arrival,
+            actual_loading_departure: rd?.actual_loading_departure,
+            actual_offloading_arrival: rd?.actual_offloading_arrival,
+            actual_offloading_departure: rd?.actual_offloading_departure,
+          });
           onOpenChange(false);
+        },
+        onError: (error) => {
+          console.error('[EditLoadDialog] Load update FAILED:', error);
         },
       },
     );
@@ -282,14 +380,7 @@ export function EditLoadDialog({
   }
   const needsVerification = isDelivered && missingTimes.length > 0;
 
-  // Format actual times for display
-  const actualTimes = {
-    loadingArrival: formatActualTime(load.actual_loading_arrival),
-    loadingDeparture: formatActualTime(load.actual_loading_departure),
-    offloadingArrival: formatActualTime(load.actual_offloading_arrival),
-    offloadingDeparture: formatActualTime(load.actual_offloading_departure),
-  };
-  const hasAnyActualTime = !!(load.actual_loading_arrival || load.actual_loading_departure || load.actual_offloading_arrival || load.actual_offloading_departure);
+  // Actual times are now always shown as editable form fields
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -598,46 +689,58 @@ export function EditLoadDialog({
                   />
                 </div>
 
-                {/* Actual Times (read-only) */}
-                {(isDelivered || hasAnyActualTime) && (
-                  <>
-                    <div className="border-t border-green-200 dark:border-green-800 pt-3 mt-3">
-                      <Label className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">Actual Times</Label>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
-                          <Clock className="h-3 w-3" />
-                          Actual Arrival
-                          {load.actual_loading_arrival_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
-                        </Label>
-                        <div className={cn(
-                          "h-9 px-3 py-2 rounded-md border text-sm flex items-center",
-                          actualTimes.loadingArrival
-                            ? "bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200 font-medium"
-                            : "bg-muted/50 border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 italic"
-                        )}>
-                          {actualTimes.loadingArrival || 'Not recorded'}
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
-                          <Clock className="h-3 w-3" />
-                          Actual Departure
-                          {load.actual_loading_departure_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
-                        </Label>
-                        <div className={cn(
-                          "h-9 px-3 py-2 rounded-md border text-sm flex items-center",
-                          actualTimes.loadingDeparture
-                            ? "bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200 font-medium"
-                            : "bg-muted/50 border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 italic"
-                        )}>
-                          {actualTimes.loadingDeparture || 'Not recorded'}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
+                {/* Actual Times (editable) */}
+                <>
+                  <div className="border-t border-green-200 dark:border-green-800 pt-3 mt-3">
+                    <Label className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">Actual Times</Label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="originActualArrival"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
+                            <Clock className="h-3 w-3" />
+                            Actual Arrival
+                            {load.actual_loading_arrival_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              className="border-green-200"
+                              placeholder="Not recorded"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="originActualDeparture"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
+                            <Clock className="h-3 w-3" />
+                            Actual Departure
+                            {load.actual_loading_departure_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              className="border-green-200"
+                              placeholder="Not recorded"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
               </CardContent>
             </Card>
 
@@ -730,46 +833,58 @@ export function EditLoadDialog({
                   />
                 </div>
 
-                {/* Actual Times (read-only) */}
-                {(isDelivered || hasAnyActualTime) && (
-                  <>
-                    <div className="border-t border-blue-200 dark:border-blue-800 pt-3 mt-3">
-                      <Label className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Actual Times</Label>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400">
-                          <Clock className="h-3 w-3" />
-                          Actual Arrival
-                          {load.actual_offloading_arrival_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
-                        </Label>
-                        <div className={cn(
-                          "h-9 px-3 py-2 rounded-md border text-sm flex items-center",
-                          actualTimes.offloadingArrival
-                            ? "bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-medium"
-                            : "bg-muted/50 border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 italic"
-                        )}>
-                          {actualTimes.offloadingArrival || 'Not recorded'}
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400">
-                          <Clock className="h-3 w-3" />
-                          Actual Departure
-                          {load.actual_offloading_departure_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
-                        </Label>
-                        <div className={cn(
-                          "h-9 px-3 py-2 rounded-md border text-sm flex items-center",
-                          actualTimes.offloadingDeparture
-                            ? "bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-medium"
-                            : "bg-muted/50 border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 italic"
-                        )}>
-                          {actualTimes.offloadingDeparture || 'Not recorded'}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
+                {/* Actual Times (editable) */}
+                <>
+                  <div className="border-t border-blue-200 dark:border-blue-800 pt-3 mt-3">
+                    <Label className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Actual Times</Label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="destActualArrival"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400">
+                            <Clock className="h-3 w-3" />
+                            Actual Arrival
+                            {load.actual_offloading_arrival_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              className="border-blue-200"
+                              placeholder="Not recorded"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="destActualDeparture"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400">
+                            <Clock className="h-3 w-3" />
+                            Actual Departure
+                            {load.actual_offloading_departure_verified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              className="border-blue-200"
+                              placeholder="Not recorded"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
               </CardContent>
             </Card>
 
