@@ -1,0 +1,476 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Refined Color Palette - Sophisticated, Minimalist */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    --primary: 222 47% 20%;
+    --primary-foreground: 210 40% 98%;
+    
+    --secondary: 215 20% 94%;
+    --secondary-foreground: 222 47% 20%;
+    
+    --muted: 215 20% 94%;
+    --muted-foreground: 215 16% 47%;
+    
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 47% 20%;
+    
+    --radius: 0.75rem;
+    
+    /* Sophisticated Status Colors - Muted, Professional */
+    --status-scheduled: 210 40% 45%;    /* Slate blue */
+    --status-in-transit: 28 80% 52%;    /* Warm amber */
+    --status-pending: 48 96% 45%;       /* Muted gold */
+    --status-delivered: 158 42% 45%;    /* Sage green */
+    
+    /* Subtle Backgrounds */
+    --status-scheduled-bg: 210 40% 96%;
+    --status-in-transit-bg: 28 80% 96%;
+    --status-pending-bg: 48 96% 96%;
+    --status-delivered-bg: 158 42% 96%;
+    
+    /* Cargo Type Colors - Refined */
+    --cargo-bv: 262 70% 55%;           /* Softer purple */
+    --cargo-cbc: 199 89% 48%;          /* Clean blue */
+    --cargo-retail: 340 70% 55%;       /* Muted pink */
+    --cargo-vansales: 25 85% 55%;      /* Warm orange */
+    
+    /* Sidebar - Sophisticated Dark */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 18%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 47% 18%;
+    --sidebar-ring: 199 89% 48%;
+    
+    /* Elegant Gradients */
+    --gradient-primary: linear-gradient(145deg, 
+      hsl(222 47% 11% / 0.98) 0%, 
+      hsl(222 47% 16% / 0.98) 100%
+    );
+    
+    --gradient-accent: linear-gradient(145deg,
+      hsl(199 89% 48% / 0.1) 0%,
+      hsl(199 89% 38% / 0.05) 100%
+    );
+    
+    --gradient-success: linear-gradient(145deg,
+      hsl(158 42% 45% / 0.1) 0%,
+      hsl(158 42% 35% / 0.05) 100%
+    );
+    
+    --gradient-overlay: linear-gradient(180deg,
+      transparent 0%,
+      hsl(0 0% 0% / 0.02) 100%
+    );
+    
+    /* Typography Scale */
+    --font-scale-ratio: 1.25;
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    
+    /* Letter Spacing */
+    --tracking-tight: -0.025em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.025em;
+    
+    /* Spacing Scale */
+    --space-unit: 0.25rem;
+    --space-2xs: calc(var(--space-unit) * 1);  /* 0.25rem */
+    --space-xs: calc(var(--space-unit) * 2);   /* 0.5rem */
+    --space-sm: calc(var(--space-unit) * 4);   /* 1rem */
+    --space-md: calc(var(--space-unit) * 6);   /* 1.5rem */
+    --space-lg: calc(var(--space-unit) * 8);   /* 2rem */
+    --space-xl: calc(var(--space-unit) * 12);  /* 3rem */
+    --space-2xl: calc(var(--space-unit) * 16); /* 4rem */
+  }
+  
+  .dark {
+    --background: 222 47% 4%;
+    --foreground: 210 40% 98%;
+    
+    --card: 222 47% 6%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 222 47% 6%;
+    --popover-foreground: 210 40% 98%;
+    
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 11%;
+    
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 222 47% 12%;
+    --muted-foreground: 215 20% 75%;
+    
+    --accent: 199 89% 48%;
+    --accent-foreground: 222 47% 11%;
+    
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 222 47% 15%;
+    --input: 222 47% 15%;
+    --ring: 199 89% 48%;
+    
+    /* Dark mode status colors - Softer */
+    --status-scheduled: 210 60% 70%;
+    --status-in-transit: 28 70% 65%;
+    --status-pending: 48 70% 60%;
+    --status-delivered: 158 50% 60%;
+    
+    --status-scheduled-bg: 210 40% 12%;
+    --status-in-transit-bg: 28 40% 12%;
+    --status-pending-bg: 48 40% 12%;
+    --status-delivered-bg: 158 40% 12%;
+    
+    --sidebar-background: 222 47% 4%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 8%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 47% 8%;
+    --sidebar-ring: 199 89% 48%;
+    
+    --gradient-primary: linear-gradient(145deg,
+      hsl(222 47% 4% / 0.98) 0%,
+      hsl(222 47% 6% / 0.98) 100%
+    );
+  }
+  
+  /* Base Typography */
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+  }
+  
+  h1 {
+    @apply text-3xl lg:text-4xl;
+    letter-spacing: var(--tracking-tight);
+  }
+  
+  h2 {
+    @apply text-2xl lg:text-3xl;
+  }
+  
+  h3 {
+    @apply text-xl lg:text-2xl;
+  }
+  
+  /* Consistent container */
+  .container {
+    @apply px-6 lg:px-8 mx-auto;
+    max-width: 1440px;
+  }
+  
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  
+  /* Focus indicators */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* Status Badges - Clean, Typography-focused */
+  .status-badge {
+    @apply inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    font-size: 0.6875rem;
+  }
+  
+  /* Data attribute based styling for better maintainability */
+  [data-status="scheduled"] {
+    background-color: hsl(var(--status-scheduled-bg));
+    color: hsl(var(--status-scheduled));
+  }
+  
+  [data-status="in-transit"] {
+    background-color: hsl(var(--status-in-transit-bg));
+    color: hsl(var(--status-in-transit));
+  }
+  
+  [data-status="pending"] {
+    background-color: hsl(var(--status-pending-bg));
+    color: hsl(var(--status-pending));
+  }
+  
+  [data-status="delivered"] {
+    background-color: hsl(var(--status-delivered-bg));
+    color: hsl(var(--status-delivered));
+  }
+  
+  /* KPI Cards - Minimalist with subtle depth */
+  .kpi-card {
+    @apply relative overflow-hidden rounded-xl bg-card p-6;
+    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.02), 
+                0 4px 6px -1px rgb(0 0 0 / 0.02);
+    transition: box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1),
+                transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+  
+  .kpi-card:hover {
+    box-shadow: 0 8px 12px -4px rgb(0 0 0 / 0.04),
+                0 12px 16px -4px rgb(0 0 0 / 0.02);
+    transform: translate3d(0, -2px, 0);
+  }
+  
+  /* Subtle accent gradient instead of colored bar */
+  .kpi-card::before {
+    content: '';
+    @apply absolute top-0 left-0 w-full h-[2px] opacity-70;
+    background: linear-gradient(90deg, 
+      hsl(var(--status-scheduled)) 0%, 
+      transparent 100%
+    );
+  }
+  
+  .kpi-card[data-status="in-transit"]::before {
+    background: linear-gradient(90deg, 
+      hsl(var(--status-in-transit)) 0%, 
+      transparent 100%
+    );
+  }
+  
+  .kpi-card[data-status="pending"]::before {
+    background: linear-gradient(90deg, 
+      hsl(var(--status-pending)) 0%, 
+      transparent 100%
+    );
+  }
+  
+  .kpi-card[data-status="delivered"]::before {
+    background: linear-gradient(90deg, 
+      hsl(var(--status-delivered)) 0%, 
+      transparent 100%
+    );
+  }
+  
+  /* Load Cards - Clean interactive cards */
+  .load-card {
+    @apply rounded-lg border bg-card p-4 transition-all duration-200;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.02);
+  }
+  
+  .load-card:hover {
+    @apply border-accent/30;
+    box-shadow: 0 4px 8px -2px rgb(0 0 0 / 0.04);
+  }
+  
+  /* Calendar - Balanced grid */
+  .calendar-grid {
+    @apply grid grid-cols-7 border rounded-lg overflow-hidden bg-card;
+  }
+  
+  .calendar-day {
+    @apply flex flex-col p-4;
+    min-height: 160px;
+    background: linear-gradient(var(--gradient-overlay));
+  }
+  
+  .calendar-day-header {
+    @apply text-sm font-medium text-muted-foreground mb-2;
+  }
+  
+  /* Section Layout */
+  .section {
+    @apply py-8 lg:py-12;
+  }
+  
+  .section-header {
+    @apply mb-6 lg:mb-8;
+  }
+  
+  /* Dashboard Grid - Responsive */
+  .dashboard-grid {
+    @apply grid gap-6;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  }
+  
+  /* Stats Grid */
+  .stats-grid {
+    @apply grid grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+  
+  /* Data Tables */
+  .data-table {
+    @apply w-full border-collapse;
+  }
+  
+  .data-table th {
+    @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted/50;
+  }
+  
+  .data-table td {
+    @apply px-4 py-3 text-sm border-b;
+  }
+}
+
+@layer utilities {
+  /* Elegant Glass Effect */
+  .glass {
+    @apply bg-white/70 backdrop-blur-md;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .dark .glass {
+    @apply bg-black/30;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Text Gradient - Subtle */
+  .text-gradient {
+    background: linear-gradient(145deg, 
+      hsl(var(--accent)) 0%, 
+      hsl(var(--accent) / 0.8) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Optimized Animations */
+  @keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(4px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.25s cubic-bezier(0.2, 0, 0, 1);
+  }
+  
+  @keyframes slideIn {
+    0% { opacity: 0; transform: translateX(-8px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.25s cubic-bezier(0.2, 0, 0, 1);
+  }
+  
+  /* Hover Lift Effect */
+  .hover-lift {
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+  
+  .hover-lift:hover {
+    transform: translate3d(0, -2px, 0);
+  }
+  
+  /* Spacing Utilities */
+  .space-y-section > * + * {
+    margin-top: var(--space-lg);
+  }
+  
+  .space-y-card > * + * {
+    margin-top: var(--space-md);
+  }
+  
+  /* Typography Utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  
+  /* Width Constraints */
+  .prose-narrow {
+    max-width: 65ch;
+  }
+  
+  .prose-wide {
+    max-width: 80ch;
+  }
+  
+  /* Border Utilities */
+  .border-subtle {
+    border-color: hsl(var(--border) / 0.5);
+  }
+  
+  /* Background Utilities */
+  .bg-subtle {
+    background-color: hsl(var(--muted) / 0.3);
+  }
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .kpi-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}
+
+/* Ensure Leaflet map doesn't overlap modals/dialogs */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane {
+  z-index: 0 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 1 !important;
+}

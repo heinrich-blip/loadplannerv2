@@ -1,0 +1,1118 @@
+[
+  {
+    "name": "ACM PETROLEUM LIMITED",
+    "address": "2548 Lusaka, Chirundu Rd, Chirundu, Zambia",
+    "latitude": -16.0337714,
+    "longitude": 28.8143331
+  },
+  {
+    "name": "African Truck Stop",
+    "address": "12 Pomona Rd, Pomona AH, Kempton Park, 1619, South Africa",
+    "latitude": -26.09256217,
+    "longitude": 28.26210178
+  },
+  {
+    "name": "Anchor Chandling",
+    "address": "Alternator Ave, Montague Gardens, Cape Town, 7441, South Africa",
+    "latitude": -33.8630966,
+    "longitude": 18.5223046
+  },
+  {
+    "name": "Andrew's Sarsfields",
+    "address": "Harare, Could not confirm exact address",
+    "latitude": -17.829,
+    "longitude": 31.052
+  },
+  {
+    "name": "Antima (Arundel Village)",
+    "address": "Shop V3 Arundel Village, 51 Quorn Ave, Mt Pleasant, Harare",
+    "latitude": -17.785,
+    "longitude": 31.05
+  },
+  {
+    "name": "Aspen Pharmaceuticals",
+    "address": "79 Burman Rd, Deal Party, Gqeberha, 6210, South Africa",
+    "latitude": -33.90164672,
+    "longitude": 25.61698807
+  },
+  {
+    "name": "Africa Truck Stop Brakpan",
+    "address": "Brakpan South Africa",
+    "latitude": -26.3011025,
+    "longitude": 28.3350613
+  },
+  {
+    "name": "Atlantis Seafood Products.",
+    "address": "145 Neil Hare Rd, Atlantis Industrial, Cape Town, 7349, South Africa",
+    "latitude": -33.6101527,
+    "longitude": 18.4672231
+  },
+  {
+    "name": "Africa Truck Stop Pomona",
+    "address": "Pomona Rd Kempton Park 1619",
+    "latitude": -26.0928259,
+    "longitude": 28.2641068
+  },
+  {
+    "name": "B BRAUN",
+    "address": "Hoogland, Ext 41, 253 Aintree Ave, Northriding, Johannesburg, 2194, South Africa",
+    "latitude": -26.0400206,
+    "longitude": 27.9535729
+  },
+  {
+    "name": "B Braun (SA)",
+    "address": "Aintree Ave, Hoogland, Randburg, 2162, South Africa",
+    "latitude": -26.0394836,
+    "longitude": 27.9530391
+  },
+  {
+    "name": "B Braun Zimbabwe",
+    "address": "6X7R+R59, Harare, Zimbabwe",
+    "latitude": -17.7854644,
+    "longitude": 30.9904866
+  },
+  {
+    "name": "BCG Supply Chain",
+    "address": "Longlake 19 Heaton Lane Linbro Park, Modderfontein, Johannesburg, 2090, South Africa",
+    "latitude": -26.0818361,
+    "longitude": 28.1325123
+  },
+  {
+    "name": "Beitbridge Border North Bound,  Zimbabwe",
+    "address": "Beitbridge, Zimbabwe",
+    "latitude": -22.21760192,
+    "longitude": 29.98530312
+  },
+  {
+    "name": "Beitbridge Border South Bound,  South Africa",
+    "address": "QX8M+CF Beitbridge, South Africa",
+    "latitude": -22.23385903,
+    "longitude": 29.98378498
+  },
+  {
+    "name": "Bon Marché Borrowdale",
+    "address": "Bond St Shopping Centre, The Chase, Mt Pleasant, Harare",
+    "latitude": -17.753,
+    "longitude": 31.096
+  },
+  {
+    "name": "Bon Marché Chisipite",
+    "address": "Chisipite Shopping Centre, Enterprise Rd, Harare",
+    "latitude": -17.794,
+    "longitude": 31.088
+  },
+  {
+    "name": "Bon Marché Westgate",
+    "address": "1642/30 Westgate Shopping Centre, Harare",
+    "latitude": -17.783,
+    "longitude": 30.966
+  },
+  {
+    "name": "Brain scope investments",
+    "address": "54 Plymouth Rd, Harare, Zimbabwe",
+    "latitude": -17.8609815,
+    "longitude": 31.022956
+  },
+  {
+    "name": "Brands Africa - Zambia",
+    "address": "York Commercial Park Kafue Road, G7C6+M8G, Makeni Road, Lusaka, Zambia",
+    "latitude": -15.4783134,
+    "longitude": 28.260813
+  },
+  {
+    "name": "Breco Seafoods",
+    "address": "4 Printers Way, Milnerton, Cape Town, 7442, South Africa",
+    "latitude": -33.8751928,
+    "longitude": 18.5127551
+  },
+  {
+    "name": "Beitbridge SA Border",
+    "address": "Beitbridge Border Post South Africa",
+    "latitude": -22.225476,
+    "longitude": 29.982789
+  },
+  {
+    "name": "Burma Valley Entry",
+    "address": "RM9X+FQ Rowa, Zimbabwe",
+    "latitude": -19.18134742,
+    "longitude": 32.6994949
+  },
+  {
+    "name": "Bulawayo Depot",
+    "address": "5 Woodbury Rd, Bulawayo, Zimbabwe",
+    "latitude": -20.14704034,
+    "longitude": 28.56972715
+  },
+  {
+    "name": "Beitbridge ZIM Border",
+    "address": "Harare-Beitbridge Highway Zimbabwe",
+    "latitude": -22.21177,
+    "longitude": 29.983518
+  },
+  {
+    "name": "Cape Town Market",
+    "address": "110 Gunners Cir, Epping, Cape Town, 7475, South Africa",
+    "latitude": -33.9310343,
+    "longitude": 18.5306736
+  },
+  {
+    "name": "Carara Agro Processing",
+    "address": "2 Froude St, Makhanda, 6139, South Africa",
+    "latitude": -33.300414,
+    "longitude": 26.534902
+  },
+  {
+    "name": "Chipinge Banana Company",
+    "address": "WJ6F+25 Chipinge, Zimbabwe",
+    "latitude": -20.08999732,
+    "longitude": 32.62297647
+  },
+  {
+    "name": "Chirundu Border Post",
+    "address": "T2 Southern Province Zambia",
+    "latitude": -16.033751,
+    "longitude": 28.845583
+  },
+  {
+    "name": "CHEP Harare",
+    "address": "Aspindale Road, & Gleneagles Rd, Harare, Zimbabwe",
+    "latitude": -17.8739814,
+    "longitude": 30.9726435
+  },
+  {
+    "name": "CHEP Jet Park",
+    "address": "19 Yaldwyn Rd, Jet Park, Boksburg, 1459, South Africa",
+    "latitude": -26.1738279,
+    "longitude": 28.2156529
+  },
+  {
+    "name": "Chilleweni Cold Store",
+    "address": "1 Suzuka Rd, Gosforth Park, Germiston, 1401, South Africa",
+    "latitude": -26.236725,
+    "longitude": 28.1298919
+  },
+  {
+    "name": "Chipinge",
+    "address": "Chipinge, Zimbabwe",
+    "latitude": -20.1938273,
+    "longitude": 32.6205674
+  },
+  {
+    "name": "Chirundu Border Post (Zimbabwe Side)",
+    "address": "Chirundu,, Zimbabwe",
+    "latitude": -16.0426243,
+    "longitude": 28.8582503
+  },
+  {
+    "name": "Chirundu Porste Post (Zambia Side)",
+    "address": "Chirundu, Zambia",
+    "latitude": -16.03362619,
+    "longitude": 28.84640962
+  },
+  {
+    "name": "Choma Truckstop Zambia",
+    "address": "52X2+J69, T1, Choma, Zambia",
+    "latitude": -16.8009511,
+    "longitude": 27.0005982
+  },
+  {
+    "name": "Choppies Bindura",
+    "address": "Atherstone Rd (near Railway Ave) / GPS -17.311288, 31.337207, Bindura, Multiple listings",
+    "latitude": -17.3,
+    "longitude": 31.333
+  },
+  {
+    "name": "Close The Loop",
+    "address": "20 Van Wyk Rd, Brentwood Park, Benoni, 1501",
+    "latitude": -26.129965,
+    "longitude": 28.287332
+  },
+  {
+    "name": "Clover Roodepoort",
+    "address": "200 Constantia Dr, Constantia Kloof, Roodepoort, 1709, South Africa",
+    "latitude": -26.1444158,
+    "longitude": 27.9182114
+  },
+  {
+    "name": "Clover SA Clayville",
+    "address": "36 Spanner Rd, Clayville Industrial, Olifantsfontein, 1666, South Africa",
+    "latitude": -25.9662485,
+    "longitude": 28.2287515
+  },
+  {
+    "name": "COMOX TRADING PRIVATE LIMITED",
+    "address": "ARLINGTON ESTATES, SEKE ROAD STAND 2449, HARARE ZW",
+    "latitude": -17.9050983,
+    "longitude": 31.0703866
+  },
+  {
+    "name": "Cape Town",
+    "address": "Cape Town, South Africa",
+    "latitude": -33.922087,
+    "longitude": 18.4231418
+  },
+  {
+    "name": "Crake Valley",
+    "address": "Unnamed Road, Zimbabwe",
+    "latitude": -19.19386274,
+    "longitude": 32.72227322
+  },
+  {
+    "name": "Cruise Ship Cape Town Harbour",
+    "address": "0A S Arm Rd, Victoria & Alfred Waterfront, Cape Town, 8001, South Africa",
+    "latitude": -33.9058362,
+    "longitude": 18.4315187
+  },
+  {
+    "name": "Crystal Candy",
+    "address": "12 Burnley Rd, Harare, Zimbabwe",
+    "latitude": -17.8478714,
+    "longitude": 31.0215627
+  },
+  {
+    "name": "DACHSER Intelligent Logistics - South Africa (PTY) Ltd",
+    "address": "9 Sim Rd, Kempton Park AH, Kempton Park, 1619, South Africa",
+    "latitude": -26.0952229,
+    "longitude": 28.25428
+  },
+  {
+    "name": "Dapper Market Agents",
+    "address": "Fortune Street, City Deep, Johannesburg South, 2197, South Africa",
+    "latitude": -26.2320022,
+    "longitude": 28.0824127
+  },
+  {
+    "name": "De Aar",
+    "address": "De Aar, 7000, South Africa",
+    "latitude": -30.6441756,
+    "longitude": 24.0105678
+  },
+  {
+    "name": "De Rust Farm",
+    "address": "De Rust Farm Farm",
+    "latitude": -34.0079266,
+    "longitude": 19.2686749
+  },
+  {
+    "name": "dRK Logistics",
+    "address": "Pomona AH, Kempton Park, 1619, South Africa",
+    "latitude": -26.0908705,
+    "longitude": 28.2698361
+  },
+  {
+    "name": "Engen Airport Convenience Centre",
+    "address": "East London South Africa",
+    "latitude": -33.0386917,
+    "longitude": 27.8331171
+  },
+  {
+    "name": "Easy Store",
+    "address": "11 Highview Blvd, Ferndale, Randburg, 2169",
+    "latitude": -26.06867292,
+    "longitude": 27.97783866
+  },
+  {
+    "name": "Engen Highway Garage",
+    "address": "Randfontein South Africa",
+    "latitude": -26.2356066,
+    "longitude": 27.6103889
+  },
+  {
+    "name": "Engen Settlers Way",
+    "address": "East London South Africa",
+    "latitude": -33.0353517,
+    "longitude": 27.8668326
+  },
+  {
+    "name": "ETG Inputs Zimbabwe (Loading Point)",
+    "address": "489 Goodwin Rd, Harare, Zimbabwe",
+    "latitude": -17.87919438,
+    "longitude": 30.96731945
+  },
+  {
+    "name": "ETG Agri Inputs Zimbabwe",
+    "address": "1 Robert Dr, Harare, Zimbabwe",
+    "latitude": -17.8393598,
+    "longitude": 31.1037351
+  },
+  {
+    "name": "Engen Truck Stop & Eat",
+    "address": "East London South Africa",
+    "latitude": -33.034532,
+    "longitude": 27.8822074
+  },
+  {
+    "name": "Farmers Trust",
+    "address": "3rd Floor Agents Building Tshwane Fresh Produce Market, Pretoria West, Pretoria, 0002, South Africa",
+    "latitude": -25.7402845,
+    "longitude": 28.1702523
+  },
+  {
+    "name": "Farmwise Cape (Pty) Ltd",
+    "address": "Bronkhorst farm, Klapmuts, 7625, South Africa",
+    "latitude": -33.8131547,
+    "longitude": 18.8761052
+  },
+  {
+    "name": "Food Lover’s Market Greendale",
+    "address": "54F2+FPC Honeydew Lifestyle Centre, 16 Greendale Ave, Harare, Zimbabwe",
+    "latitude": -17.8267684,
+    "longitude": 31.1034027
+  },
+  {
+    "name": "Food Emporium (Marimba)",
+    "address": "Marimba Suburb (see site), Harare",
+    "latitude": -17.848,
+    "longitude": 30.957
+  },
+  {
+    "name": "Food Lover's Market Greendale",
+    "address": "100 Greendale Ave, Greendale, Harare",
+    "latitude": -17.824,
+    "longitude": 31.11
+  },
+  {
+    "name": "F P T Group (Pty) Ltd",
+    "address": "Duncan Dock D'Berth Port Of, S Arm Rd, Cape Town, 8001, South Africa",
+    "latitude": -33.9075185,
+    "longitude": 18.4274659
+  },
+  {
+    "name": "Zire Fresh Produce Distribution Centre Pretoria",
+    "address": "904 Haarlem St, Roseville, Pretoria, 0084, South Africa",
+    "latitude": -25.7149123,
+    "longitude": 28.1680889
+  },
+  {
+    "name": "FreshCo Market Chisipite",
+    "address": "155 ED Mnangagwa Rd (formerly Enterprise Rd), Chisipite, Harare",
+    "latitude": -17.794,
+    "longitude": 31.088
+  },
+  {
+    "name": "Freshmark Polokwane",
+    "address": "2 Michelle Crescent N1 Industrial Park Magna Via, Polokwane Ext 42, Polokwane, 0699, South Africa",
+    "latitude": -23.8594826,
+    "longitude": 29.4747646
+  },
+  {
+    "name": "Freshmark Division, Shoprite Group",
+    "address": "Brakfontein Rd, Louwlardia, Centurion, 1683, South Africa",
+    "latitude": -25.9133944,
+    "longitude": 28.1664809
+  },
+  {
+    "name": "Freshpro",
+    "address": "310 Hillside Rd, Harare, Zimbabwe",
+    "latitude": -17.8423515,
+    "longitude": 31.1036324
+  },
+  {
+    "name": "Fuel 1 Retail (Pty) Ltd Bellville",
+    "address": "6 Mill Rd, Bellville South, Cape Town, 7530, South Africa",
+    "latitude": -33.9241403,
+    "longitude": 18.6467967
+  },
+  {
+    "name": "Fuel 1 Retail Kraaifontein",
+    "address": "12 Acacia Rd, Kraaifontein Industria, Cape Town, 7570, South Africa",
+    "latitude": -33.837619,
+    "longitude": 18.7321145
+  },
+  {
+    "name": "FX Logistics Zimbabwe (Europort Cold Storage Facility)",
+    "address": "Airport Rd, Harare, Zimbabwe",
+    "latitude": -17.9145851,
+    "longitude": 31.0928058
+  },
+  {
+    "name": "Fx Offloading Point CPT",
+    "address": "Hero Berry",
+    "latitude": -34.07236,
+    "longitude": 18.7707833
+  },
+  {
+    "name": "Gatbro International Limited",
+    "address": "35285-7 Off Mwembeshi Road Chinika Industrial Area, Lusaka, Zambia",
+    "latitude": -15.4042205,
+    "longitude": 28.2482166
+  },
+  {
+    "name": "Grahamstown",
+    "address": "Makhanda, South Africa",
+    "latitude": -33.3093952,
+    "longitude": 26.5284328
+  },
+  {
+    "name": "Groblersbrug Border Post",
+    "address": "N11, South Africa",
+    "latitude": -22.9996417,
+    "longitude": 27.9440528
+  },
+  {
+    "name": "Gweru Toll Plaza",
+    "address": "R2 Gweru Midlands Zimbabwe",
+    "latitude": -19.311952,
+    "longitude": 29.794109
+  },
+  {
+    "name": "Gateway Truckstop",
+    "address": "N1 Beit Bridge 0904 Limpopo",
+    "latitude": -22.240373,
+    "longitude": 29.985063
+  },
+  {
+    "name": "Gweru Truck Stop (Zim)",
+    "address": "62 Brackenhurst Gweru Harare Road, Gweru, Zimbabwe",
+    "latitude": -19.3863953,
+    "longitude": 29.8186479
+  },
+  {
+    "name": "Harare",
+    "address": "Harare, Zimbabwe",
+    "latitude": -17.8262928,
+    "longitude": 31.0503723
+  },
+  {
+    "name": "Harare Truckstop",
+    "address": "4X8G+VCC, Dagenham Rd, Harare, Zimbabwe",
+    "latitude": -17.8828193,
+    "longitude": 30.976006
+  },
+  {
+    "name": "SPAR Helensvale",
+    "address": "Crowhill Rd, Harare, Zimbabwe",
+    "latitude": -17.7380135,
+    "longitude": 31.1025691
+  },
+  {
+    "name": "SPAR Sam Levy's Village",
+    "address": "Shop 130 Sam Levy Village, Borrowdale Rd, Harare, Zimbabwe",
+    "latitude": -17.7601067,
+    "longitude": 31.0890773
+  },
+  {
+    "name": "SPAR Ballantyne",
+    "address": "64G2+RCJ Ballantyne Park Square, Welburn Drive, Harare, Zimbabwe",
+    "latitude": -17.772981,
+    "longitude": 31.1009431
+  },
+  {
+    "name": "Bon Marche Borrowdale Brooke",
+    "address": "74MM+98H, Harare, Zimbabwe",
+    "latitude": -17.7165569,
+    "longitude": 31.1333583
+  },
+  {
+    "name": "Harare Truck Stop",
+    "address": "Barking Road Harare Zimbabwe",
+    "latitude": -17.88143,
+    "longitude": 30.975151
+  },
+  {
+    "name": "Innscor",
+    "address": "Innscor",
+    "latitude": -17.9051633,
+    "longitude": 31.0721066
+  },
+  {
+    "name": "Ipex Petroleum",
+    "address": "42 Sussex St, Mokopane, 0601, South Africa",
+    "latitude": -24.169146,
+    "longitude": 29.011769
+  },
+  {
+    "name": "Its Chilleweni City Deep",
+    "address": "10 Merino Ave, City Deep, Johannesburg South, 2197, South Africa",
+    "latitude": -26.22767,
+    "longitude": 28.08472
+  },
+  {
+    "name": "Johannesburg",
+    "address": "Johannesburg, South Africa",
+    "latitude": -26.205647,
+    "longitude": 28.0337185
+  },
+  {
+    "name": "Korridor Kafue Truck Stop Zambia",
+    "address": "Plot 1847 Turn Pike Chirundu/Mazabuka Road Junction, Chikankata, Zambia",
+    "latitude": -15.8569662,
+    "longitude": 28.2474073
+  },
+  {
+    "name": "Kasumbalesa Border Post",
+    "address": "Kasumbalesa, Democratic Republic of the Congo",
+    "latitude": -12.26650463,
+    "longitude": 27.79599542
+  },
+  {
+    "name": "Kasumbalesa Truck Stop Zambia Border",
+    "address": "PQPW+JMJ, Kasumbalesa, Congo - Kinshasa",
+    "latitude": -12.26405984,
+    "longitude": 27.79728203
+  },
+  {
+    "name": "Kazungula",
+    "address": "Kazungula, Zambia",
+    "latitude": -17.7806088,
+    "longitude": 25.2778317
+  },
+  {
+    "name": "Kazungula Border, Botswana",
+    "address": "Botswana",
+    "latitude": -17.79990276,
+    "longitude": 25.25746578
+  },
+  {
+    "name": "Kazungula BW Truck In, Botswana",
+    "address": "6725+RR Kasane, Botswana",
+    "latitude": -17.79795813,
+    "longitude": 25.25952239
+  },
+  {
+    "name": "Karan Kolwezi 1",
+    "address": "Kolwezi DRC",
+    "latitude": -10.6915744,
+    "longitude": 25.5234205
+  },
+  {
+    "name": "Kopfontein Border SA",
+    "address": "South Africa",
+    "latitude": -24.70760065,
+    "longitude": 26.09592984
+  },
+  {
+    "name": "Korridor Chingola Truck Stop Zambia",
+    "address": "CVHX+VQR, Kasompe Airfield Rd, Chingola, Zambia",
+    "latitude": -12.5702698,
+    "longitude": 27.8993997
+  },
+  {
+    "name": "Korridor Kapiri Mposhi Truck Stop Zambia",
+    "address": "3MG9+X3, Kapiri Mposhi, Zambia",
+    "latitude": -13.9225151,
+    "longitude": 28.6676341
+  },
+  {
+    "name": "Korridor Ndola Truck Stop",
+    "address": "Plot 8084 Nakambala Rd, Ndola, Zambia",
+    "latitude": -13.0223679,
+    "longitude": 28.6428276
+  },
+  {
+    "name": "Korridor Truck Stop Zambia Lusaka",
+    "address": "G762+M57, Lusaka, Zambia",
+    "latitude": -15.4883375,
+    "longitude": 28.2504219
+  },
+  {
+    "name": "Kwa Nokeng - Kazungula",
+    "address": "Kwa nokeng oil",
+    "latitude": -17.80051031,
+    "longitude": 25.24082725
+  },
+  {
+    "name": "Kwa Nokeng Martinsdrift",
+    "address": "Kwa Nokeng Martinsdrift",
+    "latitude": -22.9962159,
+    "longitude": 27.93502625
+  },
+  {
+    "name": "Lake Petroleum Kabwe",
+    "address": "JF6W+MC, Kabwe, Zambia",
+    "latitude": -14.3883496,
+    "longitude": 28.4960115
+  },
+  {
+    "name": "LANGA FARM",
+    "address": "LANGA FARM",
+    "latitude": -18.07278852,
+    "longitude": 30.21677336
+  },
+  {
+    "name": "Lemba Truck Stop",
+    "address": "8 Industrial Road Industrial Area, Louis Trichardt, 0920, South Africa",
+    "latitude": -23.0651054,
+    "longitude": 29.9123573
+  },
+  {
+    "name": "Lymington Tollgate",
+    "address": "Mutare-Masvingo Highway Zimbabwe",
+    "latitude": -20.070389,
+    "longitude": 31.181793
+  },
+  {
+    "name": "Lemba Truck Stop",
+    "address": "Industria St Louis Trichardt 0920",
+    "latitude": -23.064228,
+    "longitude": 29.911803
+  },
+  {
+    "name": "Lusaka",
+    "address": "Lusaka, Zambia",
+    "latitude": -15.4154677,
+    "longitude": 28.2773267
+  },
+  {
+    "name": "Lusaka Korridor Truck Stop",
+    "address": "G762+M57, Lusaka, Zambia",
+    "latitude": -15.4883195,
+    "longitude": 28.2503882
+  },
+  {
+    "name": "Multiflora Flower Market",
+    "address": "Multiflora Building, Cnr Fig Place &, Vickers Rd, City Deep, Johannesburg, 2001, South Africa",
+    "latitude": -26.2338816,
+    "longitude": 28.0730446
+  },
+  {
+    "name": "Marondera",
+    "address": "Marondera, Zimbabwe",
+    "latitude": -18.1885141,
+    "longitude": 31.5487439
+  },
+  {
+    "name": "MBT Zeerust Truck Stop",
+    "address": "1214 Krans St, Zeerust, 2865, South Africa",
+    "latitude": -25.5426277,
+    "longitude": 26.106755
+  },
+  {
+    "name": "Meat N Pie Shop",
+    "address": "Cnr of Jenny and Stasie Street\n7000 De Aar - De Aar\nNorthern Cape - SouthAfrica",
+    "latitude": -30.65282152,
+    "longitude": 24.0115924
+  },
+  {
+    "name": "Mega Market",
+    "address": "Aberdeen Rd, Mutare, Zimbabwe",
+    "latitude": -19.00519335,
+    "longitude": 32.64361042
+  },
+  {
+    "name": "Minx Marketing",
+    "address": "139 Houtbaai St, Elandshaven, Germiston, 1449, South Africa",
+    "latitude": -26.2442212,
+    "longitude": 28.132425
+  },
+  {
+    "name": "Morgan Cargo",
+    "address": "1 Northern Perimeter Rd, O.R. Tambo, Kempton Park, 1627, South Africa",
+    "latitude": -26.1073531,
+    "longitude": 28.2428408
+  },
+  {
+    "name": "Morris rock resources",
+    "address": "Morris rock resources",
+    "latitude": -17.88898242,
+    "longitude": 31.2295415
+  },
+  {
+    "name": "Mount meru - chirndu",
+    "address": "XR8Q+76, T2, Chirundu, Zambia",
+    "latitude": -16.0338486,
+    "longitude": 28.8352168
+  },
+  {
+    "name": "Mutare Tollgate",
+    "address": "R5 Mutasa Manicaland Zimbabwe",
+    "latitude": -18.929365,
+    "longitude": 32.54348
+  },
+  {
+    "name": "Mudiwa Farming (Pvt) Ltd Blueberry Farm",
+    "address": "Mudiwa Farming (Pvt) Ltd Blueberry Farm",
+    "latitude": -17.75152763,
+    "longitude": 31.27072713
+  },
+  {
+    "name": "Mutare Depot",
+    "address": "5173 Tameside Nyakamete, Mutare, Zimbabwe",
+    "latitude": -19.00251415,
+    "longitude": 32.6388758
+  },
+  {
+    "name": "Mzantsi Solutions",
+    "address": "Unit 18, Blue Drop Business Park, 105 E.P. Malan Rd, Pomona, Kempton Park, 1619, South Africa",
+    "latitude": -26.1024293,
+    "longitude": 28.2632832
+  },
+  {
+    "name": "Nyamapanda Border Post",
+    "address": "A2 Mudzi Mashonaland East Zimbabwe",
+    "latitude": -16.962091,
+    "longitude": 32.850441
+  },
+  {
+    "name": "Ngezi Vansale - Nyasha",
+    "address": "Ngezi, Customer drop — add exact stop",
+    "latitude": -18.665,
+    "longitude": 29.383
+  },
+  {
+    "name": "Norton Toll Gate",
+    "address": "R2 Chegutu Mashonaland West Zimbabwe",
+    "latitude": -17.938765,
+    "longitude": 30.649133
+  },
+  {
+    "name": "Nutri Master",
+    "address": "17 Foundry Rd, Harare, Zimbabwe",
+    "latitude": -17.870155,
+    "longitude": 30.9633817
+  },
+  {
+    "name": "Nyamagaya Orchards and shop",
+    "address": "Troutbeck, RRJF+MX7, Nyanga, Zimbabwe",
+    "latitude": -18.1683306,
+    "longitude": 32.8249126
+  },
+  {
+    "name": "Nyazura,  Zimbabwe",
+    "address": "Nyazura",
+    "latitude": -18.72872356,
+    "longitude": 32.1650226
+  },
+  {
+    "name": "OBC GROUP (Pty) Ltd.",
+    "address": "1158 Louwlardia Dr, Louwlardia, Centurion, 1683, South Africa",
+    "latitude": -25.9171194,
+    "longitude": 28.1792403
+  },
+  {
+    "name": "OK Bindura",
+    "address": "Lot 1, Thurlows Paddock / 15 Main St (see notes), Bindura, OK site lists Lot 1 Thurlows Paddock",
+    "latitude": -17.3,
+    "longitude": 31.333
+  },
+  {
+    "name": "OK Mabelreign",
+    "address": "Stand 386 Mabelreign, Harare",
+    "latitude": -17.798,
+    "longitude": 30.996
+  },
+  {
+    "name": "OKmart Chiremba Rd",
+    "address": "268 Chiremba Rd, Cranborne, Harare",
+    "latitude": -17.865,
+    "longitude": 31.075
+  },
+  {
+    "name": "Paarl",
+    "address": "Paarl, South Africa",
+    "latitude": -33.7311297,
+    "longitude": 18.9628342
+  },
+  {
+    "name": "Port Elizabeth",
+    "address": "Gqeberha, South Africa",
+    "latitude": -33.913693,
+    "longitude": 25.5826876
+  },
+  {
+    "name": "P & E Truck and Trailer Services",
+    "address": "Germiston South Africa",
+    "latitude": -26.2625781,
+    "longitude": 28.3596504
+  },
+  {
+    "name": "Pick n Pay Arundel",
+    "address": "Shop 31, Arundel Shopping Complex, Quorn Ave, Mt Pleasant, Harare",
+    "latitude": -17.785,
+    "longitude": 31.05
+  },
+  {
+    "name": "Pioneer Hi-Bred",
+    "address": "97 Sloan St, Rosslyn, Akasia, 0200, South Africa",
+    "latitude": -25.6165459,
+    "longitude": 28.0926625
+  },
+  {
+    "name": "Plasma truck stop Zambia Chirundu Border",
+    "address": "XR8V+246, Chirundu, Zambia",
+    "latitude": -16.0348407,
+    "longitude": 28.842758
+  },
+  {
+    "name": "Polokwane Truck Stop",
+    "address": "Plot 140 Orpen Rd, Ivydale, Polokwane, 0699, South Africa",
+    "latitude": -23.9412266,
+    "longitude": 29.4338448
+  },
+  {
+    "name": "Pro Tyre Harare",
+    "address": "8 Portland Rd, Harare, Zimbabwe",
+    "latitude": -17.85732549,
+    "longitude": 30.99965629
+  },
+  {
+    "name": "Pulse Diesel Depot Truck Stop",
+    "address": "Pulse Diesel Depot Truck Stop",
+    "latitude": -22.36156889,
+    "longitude": 30.03178806
+  },
+  {
+    "name": "Quest Fuel Beaufort West",
+    "address": "Fabriek St, Beaufort West, 6970, South Africa",
+    "latitude": -32.3615517,
+    "longitude": 22.5589368
+  },
+  {
+    "name": "Randfontein Truck Stop",
+    "address": "1 Protea St, Aureus, Randfontein, 1760, South Africa",
+    "latitude": -26.1909952,
+    "longitude": 27.6900876
+  },
+  {
+    "name": "Rangel",
+    "address": "Unit 5, Growthpoint Industrial Estate, 1 Bell St, Meadowdale, Germiston, 1614",
+    "latitude": -26.14751755,
+    "longitude": 28.18384552
+  },
+  {
+    "name": "Red Range Filling Station",
+    "address": "8 Wingrove Rd, Bulawayo, Zimbabwe",
+    "latitude": -20.1464108,
+    "longitude": 28.5714421
+  },
+  {
+    "name": "Rezende Depot",
+    "address": "1 Abercorn Street. Harare, Zimbabwe",
+    "latitude": -17.83969405,
+    "longitude": 31.04586039
+  },
+  {
+    "name": "Rock Chemical Fillers Pvt Ltd",
+    "address": "19 Seke Rd, Harare, Zimbabwe",
+    "latitude": -17.8743961,
+    "longitude": 31.0661186
+  },
+  {
+    "name": "Ropax Truckstop East London",
+    "address": "East London South Africa",
+    "latitude": -32.9664307,
+    "longitude": 27.8985251
+  },
+  {
+    "name": "Rusape Tollgate",
+    "address": "R5 Makoni Manicaland Zimbabwe",
+    "latitude": -18.407712,
+    "longitude": 32.145355
+  },
+  {
+    "name": "S & S Petroleum",
+    "address": "S & S Petroleum",
+    "latitude": -21.18980644,
+    "longitude": 27.50618362
+  },
+  {
+    "name": "SAFT Killarney",
+    "address": "Sati Rd, Killarney Gardens, Cape Town, 7441, South Africa",
+    "latitude": -33.819259,
+    "longitude": 18.530028
+  },
+  {
+    "name": "Sai Mart Longcheng",
+    "address": "Longcheng Plaza, Belvedere, Harare",
+    "latitude": -17.843,
+    "longitude": 31
+  },
+  {
+    "name": "Seapride Foods Zambia",
+    "address": "Farm No, 397A Kafue Rd, Lusaka, Zambia",
+    "latitude": -15.4772684,
+    "longitude": 28.2619005
+  },
+  {
+    "name": "Sediba Clearing JHB",
+    "address": "14c Toronto St, Apex, Benoni, 1540, South Africa",
+    "latitude": -26.2109659,
+    "longitude": 28.3389111
+  },
+  {
+    "name": "Selbourne",
+    "address": "FM95+RQG, Honde Valley, Zimbabwe",
+    "latitude": -18.5304375,
+    "longitude": 32.6594531
+  },
+  {
+    "name": "Sequence Logistics",
+    "address": "31 O'Conner Place, Aeroton, Johannesburg South, 2013, South Africa",
+    "latitude": -26.2571976,
+    "longitude": 27.9716605
+  },
+  {
+    "name": "Silver Solutions Intermodal",
+    "address": "Gate A, 2 Baker Street Montague Gardens, 30 Sacks Circle, Bellville South, Cape Town, 7447, South Africa",
+    "latitude": -33.8778533,
+    "longitude": 18.5127581
+  },
+  {
+    "name": "Silver Solutions Intermodal",
+    "address": "Sacks Cir, Sacks Circle Industrial, Cape Town, 7530, South Africa",
+    "latitude": -33.9275582,
+    "longitude": 18.6607321
+  },
+  {
+    "name": "Skilpadshek Border Post",
+    "address": "South Africa",
+    "latitude": -25.2782944,
+    "longitude": 25.7158596
+  },
+  {
+    "name": "SPAR Bridge (Groombridge)",
+    "address": "216 The Chase, Mt Pleasant, Harare",
+    "latitude": -17.781,
+    "longitude": 31.06
+  },
+  {
+    "name": "SPAR Greencroft",
+    "address": "13 Lomagundi Rd, Greencroft, Harare",
+    "latitude": -17.785,
+    "longitude": 31.014
+  },
+  {
+    "name": "SPAR The Village (Bridge Spar)",
+    "address": "216 The Chase, Groombridge, Harare",
+    "latitude": -17.781,
+    "longitude": 31.06
+  },
+  {
+    "name": "Sterk Water",
+    "address": "SterkWater\nLatitude: -33.228425\nLongitude: 19.2394316",
+    "latitude": -33.228425,
+    "longitude": 19.2394316
+  },
+  {
+    "name": "Skyline Tollgate",
+    "address": "Simon Mazorodze Road Harare Zimbabwe",
+    "latitude": -17.969929,
+    "longitude": 30.969888
+  },
+  {
+    "name": "Sunray Corporation",
+    "address": "36 Douglas Rd, Harare, Zimbabwe",
+    "latitude": -17.8517241,
+    "longitude": 31.0092068
+  },
+  {
+    "name": "Tarondale Pack house",
+    "address": "RQFR+29, Junction Gate, Zimbabwe",
+    "latitude": -20.1773524,
+    "longitude": 32.7909666
+  },
+  {
+    "name": "TotalEnergies Rand",
+    "address": "Randfontein South Africa",
+    "latitude": -26.1746961,
+    "longitude": 27.7075497
+  },
+  {
+    "name": "Teralco Logistics",
+    "address": "Eastport Logistics Park, R21, Glen marais, Kempton Park, 1619",
+    "latitude": -26.0236916,
+    "longitude": 28.26324
+  },
+  {
+    "name": "Tlokweng Border, Botswana",
+    "address": "Botswana",
+    "latitude": -24.70252478,
+    "longitude": 26.08877313
+  },
+  {
+    "name": "TM Pick n Pay Kadoma",
+    "address": "Hebert Chitepo St, Kadoma",
+    "latitude": -18.333,
+    "longitude": 29.915
+  },
+  {
+    "name": "TM Pick n Pay Msasa",
+    "address": "Loreley Crescent, Msasa, Harare",
+    "latitude": -17.818,
+    "longitude": 31.121
+  },
+  {
+    "name": "Trade Kings Limited",
+    "address": "Plot No. 29381 Nampundwe Road Light Industrial Area Zambia, Lusaka, Zambia",
+    "latitude": -15.4185935,
+    "longitude": 28.2706048
+  },
+  {
+    "name": "TotalEnergies Randgate",
+    "address": "Randgate South Africa",
+    "latitude": -26.1725873,
+    "longitude": 27.6854549
+  },
+  {
+    "name": "Two Oceans Commercial Cold Store",
+    "address": "12 Sapphire Street, Vogelvlei, South, Kuils River, Cape Town, 7580, South Africa",
+    "latitude": -33.9183613,
+    "longitude": 18.662988
+  },
+  {
+    "name": "Upd Courier",
+    "address": "20 Railway Rd, Montague Gardens, Cape Town, 7441, South Africa",
+    "latitude": -33.8653602,
+    "longitude": 18.5264661
+  },
+  {
+    "name": "UPD warehouse",
+    "address": "14 Tamar Ave, Lea Glen, Johannesburg, 1709, South Africa",
+    "latitude": -26.190302,
+    "longitude": 27.911574
+  },
+  {
+    "name": "Vector Logistics Linbro Park",
+    "address": "Corner Frankenwald, and, Mastiff Rd, Linbro Business Park, Sandton, 2090, South Africa",
+    "latitude": -26.0637852,
+    "longitude": 28.1167615
+  },
+  {
+    "name": "Vector Logistics SRCH MIdrand",
+    "address": "Ext 38, PO Box 46, 80 Olievenhoutbosch Rd, Louwlardia, Centurion, 0157, South Africa",
+    "latitude": -25.9163793,
+    "longitude": 28.1667722
+  },
+  {
+    "name": "Willowton",
+    "address": "6 Durban Rd, Mutare, Zimbabwe",
+    "latitude": -18.99767778,
+    "longitude": 32.65295316
+  },
+  {
+    "name": "Willowton Group CPT",
+    "address": "Bax St, Ndabeni, Cape Town, 7405, South Africa",
+    "latitude": -33.9258862,
+    "longitude": 18.4911136
+  },
+  {
+    "name": "Windhoek",
+    "address": "Windhoek, Namibia",
+    "latitude": -22.5649344,
+    "longitude": 17.0842147
+  },
+  {
+    "name": "Wine Route Truck Stop,  Klapmuts",
+    "address": "80 Old Paarl Rd, Klapmuts, 7625, South Africa",
+    "latitude": -33.80475861,
+    "longitude": 18.86888254
+  },
+  {
+    "name": "Wilmar SA Truck Area",
+    "address": "Randfontein South Africa",
+    "latitude": -26.1615148,
+    "longitude": 27.7116783
+  },
+  {
+    "name": "Milangu OPTIMA",
+    "address": "Livingstone / Lusaka Road, T1, Senkobo, Zambia",
+    "latitude": -17.5923072,
+    "longitude": 25.9805073
+  },
+  {
+    "name": "Zimbabwe Phosphate Industries -Zimphos",
+    "address": "Unnamed Road, Harare, Zimbabwe",
+    "latitude": -17.8521763,
+    "longitude": 31.1325613
+  }
+]
