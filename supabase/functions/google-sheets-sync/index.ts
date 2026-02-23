@@ -378,6 +378,13 @@ function computeVariance(
 function formatTime(ts: string | null | undefined): string {
   if (!ts) return '';
   try {
+    // Simple "HH:mm" format — return as-is (padded)
+    if (/^\d{1,2}:\d{2}$/.test(ts)) return ts.padStart(5, '0');
+    // ISO format — extract local time directly from the string
+    // This avoids the UTC conversion bug: new Date("...T19:00:00+02:00").getHours() returns 17 in UTC
+    const isoMatch = ts.match(/T(\d{2}):(\d{2})/);
+    if (isoMatch) return `${isoMatch[1]}:${isoMatch[2]}`;
+    // Fallback: parse as Date (only if not ISO — e.g. some other format)
     const d = new Date(ts);
     if (isNaN(d.getTime())) return ts;
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
