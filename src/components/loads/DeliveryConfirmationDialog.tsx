@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import * as timeWindowLib from '@/lib/timeWindow';
+import { computeTimeVariance } from '@/lib/timeWindow';
 import
   {
     Dialog,
@@ -42,36 +43,10 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
-// Variance helpers — compare actual vs planned, return label + isLate flag
+// Variance helpers — use shared SAST-aware implementation
 // ---------------------------------------------------------------------------
 
-function timeToMinutes(time: string | undefined | null): number | null {
-  if (!time) return null;
-  const hm = time.match(/^(\d{1,2}):(\d{2})$/);
-  if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
-  const iso = time.match(/T(\d{2}):(\d{2})/);
-  if (iso) return parseInt(iso[1], 10) * 60 + parseInt(iso[2], 10);
-  return null;
-}
-
-function computeVariance(
-  planned: string | undefined | null,
-  actual: string | undefined | null,
-): { label: string; diffMin: number | null; isLate: boolean } {
-  const pMin = timeToMinutes(planned);
-  const aMin = timeToMinutes(actual);
-  if (pMin === null || aMin === null) return { label: '', diffMin: null, isLate: false };
-  const diff = aMin - pMin;
-  if (diff === 0) return { label: 'On time', diffMin: 0, isLate: false };
-  const abs = Math.abs(diff);
-  const hrs = Math.floor(abs / 60);
-  const mins = abs % 60;
-  const parts: string[] = [];
-  if (hrs > 0) parts.push(`${hrs}h`);
-  if (mins > 0) parts.push(`${mins}m`);
-  const tag = diff > 0 ? 'late' : 'early';
-  return { label: `${parts.join(' ')} ${tag}`, diffMin: diff, isLate: diff > 0 };
-}
+const computeVariance = computeTimeVariance;
 
 /** Inline variance note shown under each time input — includes note input when late */
 function VarianceNote({ planned, actual, noteValue, onNoteChange }: { planned?: string; actual?: string; noteValue?: string; onNoteChange?: (v: string) => void }) {

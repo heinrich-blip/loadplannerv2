@@ -1,5 +1,6 @@
 import type { Load } from "@/hooks/useLoads";
 import * as timeWindowLib from "@/lib/timeWindow";
+import { computeTimeVariance } from "@/lib/timeWindow";
 import { format, getWeek, parseISO } from "date-fns";
 import XLSX from "xlsx-js-style";
 
@@ -31,51 +32,15 @@ interface ExportOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Variance helpers
+// Variance helpers — use shared SAST-aware implementation
 // ---------------------------------------------------------------------------
 
-/**
- * Parse a time string (HH:mm or ISO datetime) into total minutes from midnight.
- * Returns null if the value is empty or unparseable.
- */
-function timeToMinutes(time: string | undefined | null): number | null {
-  if (!time) return null;
-
-  // Try HH:mm
-  const hm = time.match(/^(\d{1,2}):(\d{2})$/);
-  if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
-
-  // Try ISO datetime – extract the time portion
-  const iso = time.match(/T(\d{2}):(\d{2})/);
-  if (iso) return parseInt(iso[1], 10) * 60 + parseInt(iso[2], 10);
-
-  return null;
-}
-
-/**
- * Return a human-readable variance string and a sign indicator.
- *  - negative diff → early (actual before planned)
- *  - positive diff  → late  (actual after planned)
- */
 function computeVariance(
   planned: string | undefined | null,
   actual: string | undefined | null,
 ): { label: string; diffMin: number | null } {
-  const pMin = timeToMinutes(planned);
-  const aMin = timeToMinutes(actual);
-  if (pMin === null || aMin === null) return { label: "", diffMin: null };
-
-  const diff = aMin - pMin; // positive = late
-  if (diff === 0) return { label: "On time", diffMin: 0 };
-
-  const abs = Math.abs(diff);
-  const hrs = Math.floor(abs / 60);
-  const mins = abs % 60;
-  const parts: string[] = [];
-  if (hrs > 0) parts.push(`${hrs}h`);
-  if (mins > 0) parts.push(`${mins}m`);
-  const tag = diff > 0 ? "late" : "early";
-  return { label: `${parts.join(" ")} ${tag}`, diffMin: diff };
+  const v = computeTimeVariance(planned, actual);
+  return { label: v.label, diffMin: v.diffMin };
 }
 
 // Cell style helpers

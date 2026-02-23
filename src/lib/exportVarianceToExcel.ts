@@ -1,41 +1,17 @@
 import type { Load } from "@/hooks/useLoads";
 import * as timeWindowLib from "@/lib/timeWindow";
-import { differenceInMinutes, eachWeekOfInterval, format, parseISO, subMonths } from "date-fns";
+import { timeToSASTMinutes } from "@/lib/timeWindow";
+import { eachWeekOfInterval, format, parseISO, subMonths } from "date-fns";
 import * as XLSX from "xlsx";
 
 type TimeRange = "3months" | "6months" | "12months";
 
+/** Compute variance in minutes using SAST-aware conversion */
 function calcVar(planned: string | undefined, actual: string | undefined): number | null {
-  if (!planned || !actual) return null;
-  const parseTime = (s: string): Date | null => {
-    // ISO first
-    const iso = parseISO(s);
-    if (!isNaN(iso.getTime())) return iso;
-    // HH:mm (24h)
-    const m = s.match(/^(\d{1,2}):(\d{2})$/);
-    if (m) {
-      const d = new Date();
-      d.setHours(parseInt(m[1], 10), parseInt(m[2], 10), 0, 0);
-      return d;
-    }
-    // HH:mm AM/PM
-    const ampm = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (ampm) {
-      const d = new Date();
-      let h = parseInt(ampm[1], 10);
-      const mins = parseInt(ampm[2], 10);
-      const p = ampm[3].toUpperCase();
-      if (p === "PM" && h !== 12) h += 12;
-      if (p === "AM" && h === 12) h = 0;
-      d.setHours(h, mins, 0, 0);
-      return d;
-    }
-    return null;
-  };
-  const p = parseTime(planned);
-  const a = parseTime(actual);
-  if (!p || !a) return null;
-  return differenceInMinutes(a, p);
+  const pMin = timeToSASTMinutes(planned);
+  const aMin = timeToSASTMinutes(actual);
+  if (pMin === null || aMin === null) return null;
+  return aMin - pMin;
 }
 
 function filtered(loads: Load[], timeRange: TimeRange): Load[] {

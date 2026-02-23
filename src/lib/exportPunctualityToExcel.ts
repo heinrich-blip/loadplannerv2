@@ -1,39 +1,15 @@
 import { utils as XLSXUtils, writeFile as XLSXWriteFile, type WorkBook } from "xlsx";
 import type { Load } from "@/hooks/useLoads";
 import * as timeWindowLib from "@/lib/timeWindow";
+import { timeToSASTMinutes } from "@/lib/timeWindow";
 import { parseISO, format } from "date-fns";
 
+/** Compute variance in minutes using SAST-aware conversion */
 function minutesVariance(planned?: string, actual?: string): number | null {
-  if (!planned || !actual) return null;
-  try {
-    const parseTime = (s: string): Date | null => {
-      const base = new Date();
-      base.setHours(0, 0, 0, 0);
-      const m1 = s.match(/^(\d{1,2}):(\d{2})$/);
-      if (m1) {
-        base.setHours(parseInt(m1[1], 10), parseInt(m1[2], 10));
-        return base;
-      }
-      const m2 = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (m2) {
-        let h = parseInt(m2[1], 10);
-        const min = parseInt(m2[2], 10);
-        const p = m2[3].toUpperCase();
-        if (p === "PM" && h !== 12) h += 12;
-        if (p === "AM" && h === 12) h = 0;
-        base.setHours(h, min);
-        return base;
-      }
-      const iso = parseISO(s);
-      return isNaN(iso.getTime()) ? null : iso;
-    };
-    const p = parseTime(planned);
-    const a = parseTime(actual);
-    if (!p || !a) return null;
-    return Math.round((a.getTime() - p.getTime()) / 60000);
-  } catch {
-    return null;
-  }
+  const pMin = timeToSASTMinutes(planned);
+  const aMin = timeToSASTMinutes(actual);
+  if (pMin === null || aMin === null) return null;
+  return aMin - pMin;
 }
 
 export function exportPunctualityToExcel(loads: Load[], timeRange: "3months" | "6months" | "12months") {

@@ -349,21 +349,19 @@ async function applyVarianceFormatting(
 
 function timeToMinutes(time: string | undefined | null): number | null {
   if (!time) return null;
-  // Plain HH:mm — parse directly
+  // Plain HH:mm — assumed to be already in SAST
   const hm = time.match(/^(\d{1,2}):(\d{2})$/);
   if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
-  // ISO timestamp — convert to SAST (UTC+2) before extracting hours
+  // HH:mm:ss — assumed to be already in SAST
+  const hms = time.match(/^(\d{1,2}):(\d{2}):\d{2}/);
+  if (hms) return parseInt(hms[1], 10) * 60 + parseInt(hms[2], 10);
+  // ISO timestamp — convert to SAST (UTC+2) using manual offset.
+  // South Africa does not observe daylight saving time, so UTC+2 is always correct.
   const d = new Date(time);
   if (!isNaN(d.getTime())) {
-    const parts = new Intl.DateTimeFormat('en-ZA', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Africa/Johannesburg',
-    }).formatToParts(d);
-    const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
-    const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
-    return h * 60 + m;
+    const sastMs = d.getTime() + 2 * 60 * 60 * 1000;
+    const sast = new Date(sastMs);
+    return sast.getUTCHours() * 60 + sast.getUTCMinutes();
   }
   return null;
 }
@@ -392,19 +390,17 @@ function formatTime(ts: string | null | undefined): string {
   try {
     // Simple "HH:mm" format — return as-is (padded)
     if (/^\d{1,2}:\d{2}$/.test(ts)) return ts.padStart(5, '0');
-    // Parse as Date and convert to SAST (Africa/Johannesburg, UTC+2).
-    // The edge function runs in UTC so we must explicitly convert.
+    // HH:mm:ss — strip seconds, pad
+    const hmsMatch = ts.match(/^(\d{1,2}):(\d{2}):\d{2}/);
+    if (hmsMatch) return `${hmsMatch[1].padStart(2, '0')}:${hmsMatch[2]}`;
+    // Parse as Date and convert to SAST (UTC+2) using manual offset.
+    // South Africa does not observe daylight saving time, so UTC+2 is always correct.
     const d = new Date(ts);
     if (isNaN(d.getTime())) return ts;
-    // Use Intl to format in the correct timezone
-    const parts = new Intl.DateTimeFormat('en-ZA', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Africa/Johannesburg',
-    }).formatToParts(d);
-    const hour = parts.find(p => p.type === 'hour')?.value ?? '00';
-    const minute = parts.find(p => p.type === 'minute')?.value ?? '00';
+    const sastMs = d.getTime() + 2 * 60 * 60 * 1000;
+    const sast = new Date(sastMs);
+    const hour = String(sast.getUTCHours()).padStart(2, '0');
+    const minute = String(sast.getUTCMinutes()).padStart(2, '0');
     return `${hour}:${minute}`;
   } catch {
     return ts;
@@ -594,16 +590,24 @@ serve(async (req) => {
       const actualOA = load.actual_offloading_arrival || tw.destination.actualArrival || '';
       const actualOD = load.actual_offloading_departure || tw.destination.actualDeparture || '';
 
-      const laVar = computeVariance(tw.origin.plannedArrival, actualLA);
-      const ldVar = computeVariance(tw.origin.plannedDeparture, actualLD);
-      const oaVar = computeVariance(tw.destination.plannedArrival, actualOA);
-      const odVar = computeVariance(tw.destination.plannedDeparture, actualOD);
+      // Convert actual times to SAST "HH:mm" strings FIRST, then compute
+      // variances on same-timezone strings. This avoids any Intl / runtime bugs
+      // where ISO timestamps might be compared in UTC instead of SAST.
+      const actualLAFormatted = formatTime(actualLA);
+      const actualLDFormatted = formatTime(actualLD);
+      const actualOAFormatted = formatTime(actualOA);
+      const actualODFormatted = formatTime(actualOD);
+
+      const laVar = computeVariance(tw.origin.plannedArrival, actualLAFormatted);
+      const ldVar = computeVariance(tw.origin.plannedDeparture, actualLDFormatted);
+      const oaVar = computeVariance(tw.destination.plannedArrival, actualOAFormatted);
+      const odVar = computeVariance(tw.destination.plannedDeparture, actualODFormatted);
 
       const notes: string[] = [];
-      const n1 = buildNote('Loading Arrival', tw.origin.plannedArrival, actualLA);
-      const n2 = buildNote('Loading Departure', tw.origin.plannedDeparture, actualLD);
-      const n3 = buildNote('Offloading Arrival', tw.destination.plannedArrival, actualOA);
-      const n4 = buildNote('Offloading Departure', tw.destination.plannedDeparture, actualOD);
+      const n1 = buildNote('Loading Arrival', tw.origin.plannedArrival, actualLAFormatted);
+      const n2 = buildNote('Loading Departure', tw.origin.plannedDeparture, actualLDFormatted);
+      const n3 = buildNote('Offloading Arrival', tw.destination.plannedArrival, actualOAFormatted);
+      const n4 = buildNote('Offloading Departure', tw.destination.plannedDeparture, actualODFormatted);
       if (n1) notes.push(n1);
       if (n2) notes.push(n2);
       if (n3) notes.push(n3);
@@ -642,16 +646,16 @@ serve(async (req) => {
           load.destination,
           formatDate(load.loading_date),
           tw.origin.plannedArrival || '',
-          formatTime(actualLA),
+          actualLAFormatted,
           laVar.label,
           tw.origin.plannedDeparture || '',
-          formatTime(actualLD),
+          actualLDFormatted,
           ldVar.label,
           tw.destination.plannedArrival || '',
-          formatTime(actualOA),
+          actualOAFormatted,
           oaVar.label,
           tw.destination.plannedDeparture || '',
-          formatTime(actualOD),
+          actualODFormatted,
           odVar.label,
           varianceReason,
           notes.join(' | '),

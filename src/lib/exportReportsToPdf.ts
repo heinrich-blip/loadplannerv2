@@ -10,6 +10,7 @@ import {
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as timeWindowLib from "@/lib/timeWindow";
+import { timeToSASTMinutes } from "@/lib/timeWindow";
 
 // Type extension for jspdf-autotable
 interface jsPDFWithAutoTable extends jsPDF {
@@ -201,54 +202,18 @@ function calculateSummaryStats(loads: Load[]) {
 }
 
 /**
- * Calculate variance in minutes between planned and actual times
- * Returns null if either time is missing or invalid
+ * Calculate variance in minutes between planned and actual times.
+ * Uses shared SAST-aware conversion so ISO timestamps are correctly
+ * compared against planned HH:mm times (which are always in SAST).
  */
 function calculateVarianceMinutes(
   planned: string | null | undefined,
   actual: string | null | undefined,
 ): number | null {
-  if (!planned || !actual) return null;
-
-  try {
-    // Try parsing as ISO date first
-    const parseTime = (timeStr: string): Date | null => {
-      const iso = new Date(timeStr);
-      if (!isNaN(iso.getTime())) return iso;
-
-      // Try HH:mm format
-      const hm = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-      if (hm) {
-        const d = new Date();
-        d.setHours(parseInt(hm[1]), parseInt(hm[2]), 0, 0);
-        return d;
-      }
-
-      // Try HH:mm AM/PM format
-      const ampm = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (ampm) {
-        const d = new Date();
-        let h = parseInt(ampm[1]);
-        const mins = parseInt(ampm[2]);
-        const period = ampm[3].toUpperCase();
-        if (period === 'PM' && h !== 12) h += 12;
-        if (period === 'AM' && h === 12) h = 0;
-        d.setHours(h, mins, 0, 0);
-        return d;
-      }
-
-      return null;
-    };
-
-    const plannedDate = parseTime(planned);
-    const actualDate = parseTime(actual);
-
-    if (!plannedDate || !actualDate) return null;
-
-    return Math.round((actualDate.getTime() - plannedDate.getTime()) / (60 * 1000));
-  } catch {
-    return null;
-  }
+  const pMin = timeToSASTMinutes(planned);
+  const aMin = timeToSASTMinutes(actual);
+  if (pMin === null || aMin === null) return null;
+  return aMin - pMin;
 }
 
 export function exportReportsToPdf({

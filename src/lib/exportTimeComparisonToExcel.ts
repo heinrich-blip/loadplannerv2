@@ -1,5 +1,6 @@
 import type { Load } from "@/hooks/useLoads";
 import * as timeWindowLib from "@/lib/timeWindow";
+import { computeTimeVariance, formatTimeAsSAST } from "@/lib/timeWindow";
 import { format, getWeek, parseISO } from "date-fns";
 import XLSX from "xlsx-js-style";
 
@@ -7,60 +8,14 @@ import XLSX from "xlsx-js-style";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Parse a time string (HH:mm or ISO datetime) into total minutes from midnight.
- */
-function timeToMinutes(time: string | undefined | null): number | null {
-  if (!time) return null;
-
-  // HH:mm
-  const hm = time.match(/^(\d{1,2}):(\d{2})$/);
-  if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
-
-  // ISO datetime
-  const iso = time.match(/T(\d{2}):(\d{2})/);
-  if (iso) return parseInt(iso[1], 10) * 60 + parseInt(iso[2], 10);
-
-  return null;
-}
-
-/**
- * Compute variance between planned (HH:mm) and actual (ISO or HH:mm) time.
- * Returns { label, diffMin, isLate }.
- */
-function computeVariance(
-  planned: string | undefined | null,
-  actual: string | undefined | null,
-): { label: string; diffMin: number | null; isLate: boolean } {
-  const pMin = timeToMinutes(planned);
-  const aMin = timeToMinutes(actual);
-  if (pMin === null || aMin === null) return { label: "", diffMin: null, isLate: false };
-
-  const diff = aMin - pMin;
-  if (diff === 0) return { label: "On time", diffMin: 0, isLate: false };
-
-  const abs = Math.abs(diff);
-  const hrs = Math.floor(abs / 60);
-  const mins = abs % 60;
-  const parts: string[] = [];
-  if (hrs > 0) parts.push(`${hrs}h`);
-  if (mins > 0) parts.push(`${mins}m`);
-  const tag = diff > 0 ? "late" : "early";
-  return { label: `${parts.join(" ")} ${tag}`, diffMin: diff, isLate: diff > 0 };
-}
+// Use the shared SAST-aware computeTimeVariance from timeWindow.ts
+const computeVariance = computeTimeVariance;
 
 /**
  * Format an ISO timestamp (used for actual times from the DB columns) into
- * a short time string, e.g. "14:35".
+ * a short time string in SAST, e.g. "14:35".
  */
-function formatActualTime(timestamp: string | null | undefined): string {
-  if (!timestamp) return "";
-  try {
-    return format(new Date(timestamp), "HH:mm");
-  } catch {
-    return timestamp;
-  }
-}
+const formatActualTime = formatTimeAsSAST;
 
 /**
  * Format an ISO timestamp into a full datetime string, e.g. "23 Feb 14:35".

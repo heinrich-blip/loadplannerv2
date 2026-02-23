@@ -1,6 +1,7 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import * as timeWindowLib from "@/lib/timeWindow";
+import { timeToSASTMinutes } from "@/lib/timeWindow";
 import
   {
     Card,
@@ -56,7 +57,6 @@ interface TimeWindowData {
 }
 import
   {
-    differenceInMinutes,
     eachWeekOfInterval,
     endOfMonth,
     endOfWeek,
@@ -112,55 +112,16 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 // Calculate time variance in minutes between planned and actual
+// Uses shared SAST-aware conversion so ISO timestamps are correctly
+// compared against planned HH:mm times (which are always in SAST).
 const calculateVarianceMinutes = (
   planned: string | undefined,
   actual: string | undefined,
 ): number | null => {
-  if (!planned || !actual) return null;
-
-  try {
-    // Handle various time formats: "08:00", "08:00 AM", "2026-01-12T08:00"
-    const parseTime = (timeStr: string): Date | null => {
-      const baseDate = new Date();
-      baseDate.setHours(0, 0, 0, 0);
-
-      // Try HH:mm format
-      const simpleMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-      if (simpleMatch) {
-        const [, hours, mins] = simpleMatch;
-        baseDate.setHours(parseInt(hours, 10), parseInt(mins, 10));
-        return baseDate;
-      }
-
-      // Try HH:mm AM/PM format
-      const amPmMatch = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (amPmMatch) {
-        const [, hours, mins, period] = amPmMatch;
-        let h = parseInt(hours, 10);
-        if (period.toUpperCase() === "PM" && h !== 12) h += 12;
-        if (period.toUpperCase() === "AM" && h === 12) h = 0;
-        baseDate.setHours(h, parseInt(mins, 10));
-        return baseDate;
-      }
-
-      // Try ISO format
-      const isoDate = parseISO(timeStr);
-      if (!isNaN(isoDate.getTime())) {
-        return isoDate;
-      }
-
-      return null;
-    };
-
-    const plannedTime = parseTime(planned);
-    const actualTime = parseTime(actual);
-
-    if (!plannedTime || !actualTime) return null;
-
-    return differenceInMinutes(actualTime, plannedTime);
-  } catch {
-    return null;
-  }
+  const pMin = timeToSASTMinutes(planned);
+  const aMin = timeToSASTMinutes(actual);
+  if (pMin === null || aMin === null) return null;
+  return aMin - pMin;
 };
 
 const _CHART_GRADIENT_COLORS = {

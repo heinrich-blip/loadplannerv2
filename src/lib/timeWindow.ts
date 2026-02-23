@@ -147,6 +147,94 @@ export function parseTimeWindowOrNull(
 }
 
 // ---------------------------------------------------------------------------
+// SAST time helpers — shared by all variance / export logic.
+// South Africa does not observe DST so UTC+2 is always correct.
+// ---------------------------------------------------------------------------
+
+const SAST_OFFSET_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Convert any supported time string to total minutes from midnight **in SAST**.
+ *
+ * Supported formats:
+ *  - "HH:mm"              — assumed SAST, parsed directly
+ *  - "HH:mm:ss"           — assumed SAST, seconds stripped
+ *  - ISO 8601 timestamp   — converted from UTC to SAST (UTC+2)
+ *
+ * Returns `null` if the value is empty, undefined, or unparseable.
+ */
+export function timeToSASTMinutes(time: string | undefined | null): number | null {
+  if (!time) return null;
+
+  // Plain HH:mm — assumed SAST
+  const hm = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
+
+  // HH:mm:ss — assumed SAST, drop seconds
+  const hms = time.match(/^(\d{1,2}):(\d{2}):\d{2}/);
+  if (hms) return parseInt(hms[1], 10) * 60 + parseInt(hms[2], 10);
+
+  // ISO / any Date-parseable string → convert to SAST
+  const d = new Date(time);
+  if (!isNaN(d.getTime())) {
+    const sast = new Date(d.getTime() + SAST_OFFSET_MS);
+    return sast.getUTCHours() * 60 + sast.getUTCMinutes();
+  }
+
+  return null;
+}
+
+/**
+ * Format any time value to "HH:mm" **in SAST**.
+ *
+ * - "HH:mm" input    → returned as-is (padded)
+ * - "HH:mm:ss" input → seconds stripped
+ * - ISO timestamp     → converted from UTC to SAST
+ */
+export function formatTimeAsSAST(ts: string | null | undefined): string {
+  if (!ts) return "";
+  // Plain HH:mm
+  if (/^\d{1,2}:\d{2}$/.test(ts)) return ts.padStart(5, "0");
+  // HH:mm:ss
+  const hmsMatch = ts.match(/^(\d{1,2}):(\d{2}):\d{2}/);
+  if (hmsMatch) return `${hmsMatch[1].padStart(2, "0")}:${hmsMatch[2]}`;
+  // ISO / Date-parseable
+  const d = new Date(ts);
+  if (!isNaN(d.getTime())) {
+    const sast = new Date(d.getTime() + SAST_OFFSET_MS);
+    return `${String(sast.getUTCHours()).padStart(2, "0")}:${String(sast.getUTCMinutes()).padStart(2, "0")}`;
+  }
+  return ts;
+}
+
+/**
+ * Compute variance between a planned time (HH:mm, SAST) and an actual time
+ * (HH:mm, HH:mm:ss, or ISO timestamp) — both normalised to SAST.
+ *
+ * Positive diff → late, negative → early.
+ */
+export function computeTimeVariance(
+  planned: string | undefined | null,
+  actual: string | undefined | null,
+): { label: string; diffMin: number | null; isLate: boolean } {
+  const pMin = timeToSASTMinutes(planned);
+  const aMin = timeToSASTMinutes(actual);
+  if (pMin === null || aMin === null) return { label: "", diffMin: null, isLate: false };
+
+  const diff = aMin - pMin;
+  if (diff === 0) return { label: "On time", diffMin: 0, isLate: false };
+
+  const abs = Math.abs(diff);
+  const hrs = Math.floor(abs / 60);
+  const mins = abs % 60;
+  const parts: string[] = [];
+  if (hrs > 0) parts.push(`${hrs}h`);
+  if (mins > 0) parts.push(`${mins}m`);
+  const tag = diff > 0 ? "late" : "early";
+  return { label: `${parts.join(" ")} ${tag}`, diffMin: diff, isLate: diff > 0 };
+}
+
+// ---------------------------------------------------------------------------
 // Stringify helper
 // ---------------------------------------------------------------------------
 
