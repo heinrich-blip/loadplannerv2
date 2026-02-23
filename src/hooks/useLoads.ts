@@ -2,6 +2,29 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database, Json } from '@/integrations/supabase/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+
+// ---------------------------------------------------------------------------
+// Google Sheets sync helper — fires-and-forgets a POST to the edge function
+// so the Time Comparison sheet stays in sync whenever times change.
+// ---------------------------------------------------------------------------
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+async function triggerGoogleSheetsSync() {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/google-sheets-sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({}),
+    });
+  } catch {
+    // Swallow errors — sheet sync is best-effort and should never block the UI
+  }
+}
 
 type LoadStatus = Database['public']['Enums']['load_status'];
 type CargoType = Database['public']['Enums']['cargo_type'];
@@ -128,7 +151,36 @@ export function useLoads() {
       if (error) throw error;
       return data as unknown as Load[];
     },
+    // Poll every 10s so status changes from geofence auto-capture
+    // are reflected across all pages in near real-time
+    refetchInterval: 10_000,
   });
+}
+
+/**
+ * Subscribes to Supabase realtime changes on the loads table.
+ * Call this once (e.g. in a top-level provider) to get instant cache
+ * invalidation whenever any load row is inserted, updated, or deleted.
+ */
+export function useLoadsRealtimeSync() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('loads-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'loads' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['loads'] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 }
 
 /**
@@ -199,9 +251,18 @@ export function useUpdateLoad() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loads'] });
       toast({ title: 'Load updated successfully' });
+
+      // Trigger Google Sheets sync when time-related fields changed
+      const timeKeys = [
+        'actual_loading_arrival', 'actual_loading_departure',
+        'actual_offloading_arrival', 'actual_offloading_departure',
+        'time_window', 'status',
+      ];
+      const hasTimeChange = Object.keys(variables).some(k => timeKeys.includes(k));
+      if (hasTimeChange) triggerGoogleSheetsSync();
     },
     onError: (error) => {
       toast({ title: 'Failed to update load', description: error.message, variant: 'destructive' });
@@ -268,6 +329,8 @@ export function useUpdateLoadTimes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loads'] });
       toast({ title: 'Load times updated successfully' });
+      // Always sync to Google Sheets when times are explicitly updated
+      triggerGoogleSheetsSync();
     },
     onError: (error) => {
       toast({ title: 'Failed to update load times', description: error.message, variant: 'destructive' });

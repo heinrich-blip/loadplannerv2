@@ -35,11 +35,85 @@ import { Textarea } from '@/components/ui/textarea';
 import { type Load, useCreateLoad, useUpdateLoad } from '@/hooks/useLoads';
 import { getLocationDisplayName } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { addDays, format, formatISO, parseISO } from 'date-fns';
-import { ArrowRight, CheckCircle, Clock, MapPin, RotateCcw, Truck } from 'lucide-react';
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { AlertTriangle, ArrowRight, CheckCircle, CheckCircle2, Clock, MapPin, RotateCcw, Truck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Variance helpers — compare actual vs planned, return label + isLate flag
+// ---------------------------------------------------------------------------
+
+function timeToMinutes(time: string | undefined | null): number | null {
+  if (!time) return null;
+  const hm = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
+  const iso = time.match(/T(\d{2}):(\d{2})/);
+  if (iso) return parseInt(iso[1], 10) * 60 + parseInt(iso[2], 10);
+  return null;
+}
+
+function computeVariance(
+  planned: string | undefined | null,
+  actual: string | undefined | null,
+): { label: string; diffMin: number | null; isLate: boolean } {
+  const pMin = timeToMinutes(planned);
+  const aMin = timeToMinutes(actual);
+  if (pMin === null || aMin === null) return { label: '', diffMin: null, isLate: false };
+  const diff = aMin - pMin;
+  if (diff === 0) return { label: 'On time', diffMin: 0, isLate: false };
+  const abs = Math.abs(diff);
+  const hrs = Math.floor(abs / 60);
+  const mins = abs % 60;
+  const parts: string[] = [];
+  if (hrs > 0) parts.push(`${hrs}h`);
+  if (mins > 0) parts.push(`${mins}m`);
+  const tag = diff > 0 ? 'late' : 'early';
+  return { label: `${parts.join(' ')} ${tag}`, diffMin: diff, isLate: diff > 0 };
+}
+
+/** Inline variance note shown under each time input — includes note input when late */
+function VarianceNote({ planned, actual, noteValue, onNoteChange }: { planned?: string; actual?: string; noteValue?: string; onNoteChange?: (v: string) => void }) {
+  const v = computeVariance(planned, actual);
+  if (v.diffMin === null) return null;
+  if (v.isLate) {
+    return (
+      <div className="mt-1 space-y-1.5">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
+          <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+          <span className="text-xs text-red-700 dark:text-red-300 font-medium">
+            {v.label} — planned time not met
+          </span>
+        </div>
+        {onNoteChange && (
+          <input
+            type="text"
+            value={noteValue || ''}
+            onChange={(e) => onNoteChange(e.target.value)}
+            placeholder="Reason for late..."
+            className="w-full text-xs px-2 py-1.5 rounded border border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-950/20 text-red-800 dark:text-red-200 placeholder:text-red-400 dark:placeholder:text-red-600 focus:outline-none focus:ring-1 focus:ring-red-400"
+          />
+        )}
+      </div>
+    );
+  }
+  if (v.diffMin === 0) {
+    return (
+      <div className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+        <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">On time</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
+      <Clock className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+      <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">{v.label}</span>
+    </div>
+  );
+}
 
 const formSchema = z.object({
   originActualArrival: z.string().optional(),
@@ -47,6 +121,10 @@ const formSchema = z.object({
   destActualArrival: z.string().optional(),
   destActualDeparture: z.string().optional(),
   deliveryNotes: z.string().optional(),
+  originArrivalNote: z.string().optional(),
+  originDepartureNote: z.string().optional(),
+  destArrivalNote: z.string().optional(),
+  destDepartureNote: z.string().optional(),
   // Backload fields
   createBackload: z.boolean(),
   backloadDestination: z.enum(['BV', 'CBC']).optional(),
@@ -86,6 +164,7 @@ interface DeliveryConfirmationDialogProps {
 export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificationOnly = false }: DeliveryConfirmationDialogProps) {
   const updateLoad = useUpdateLoad();
   const createLoad = useCreateLoad();
+  const [showMissingTimesWarning, setShowMissingTimesWarning] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -95,6 +174,10 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
       destActualArrival: '',
       destActualDeparture: '',
       deliveryNotes: '',
+      originArrivalNote: '',
+      originDepartureNote: '',
+      destArrivalNote: '',
+      destDepartureNote: '',
       createBackload: false,
       backloadDestination: undefined,
       backloadCargoType: undefined,
@@ -110,13 +193,24 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
   // Reset form when load changes
   useEffect(() => {
     if (load && open) {
+      setShowMissingTimesWarning(false);
       const times = timeWindowLib.parseTimeWindow(load.time_window);
+      // Extract existing per-field notes from time_window
+      const tw = (load.time_window && typeof load.time_window === 'object' && !Array.isArray(load.time_window))
+        ? (load.time_window as Record<string, unknown>)
+        : {};
+      const originTw = (tw.origin && typeof tw.origin === 'object') ? (tw.origin as Record<string, unknown>) : {};
+      const destTw = (tw.destination && typeof tw.destination === 'object') ? (tw.destination as Record<string, unknown>) : {};
       form.reset({
         originActualArrival: times.origin.actualArrival,
         originActualDeparture: times.origin.actualDeparture,
         destActualArrival: times.destination.actualArrival,
         destActualDeparture: times.destination.actualDeparture,
         deliveryNotes: '',
+        originArrivalNote: (typeof originTw.arrivalNote === 'string') ? originTw.arrivalNote : '',
+        originDepartureNote: (typeof originTw.departureNote === 'string') ? originTw.departureNote : '',
+        destArrivalNote: (typeof destTw.arrivalNote === 'string') ? destTw.arrivalNote : '',
+        destDepartureNote: (typeof destTw.departureNote === 'string') ? destTw.departureNote : '',
         createBackload: false,
         backloadDestination: undefined,
         backloadCargoType: undefined,
@@ -154,14 +248,20 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
         plannedDeparture: currentTimes.origin.plannedDeparture,
         actualArrival: data.originActualArrival || currentTimes.origin.actualArrival,
         actualDeparture: data.originActualDeparture || currentTimes.origin.actualDeparture,
+        arrivalNote: data.originArrivalNote || '',
+        departureNote: data.originDepartureNote || '',
       },
       destination: {
         plannedArrival: currentTimes.destination.plannedArrival,
         plannedDeparture: currentTimes.destination.plannedDeparture,
         actualArrival: data.destActualArrival || currentTimes.destination.actualArrival,
         actualDeparture: data.destActualDeparture || currentTimes.destination.actualDeparture,
+        arrivalNote: data.destArrivalNote || '',
+        departureNote: data.destDepartureNote || '',
       },
       backload: currentTimes.backload, // Preserve existing backload data
+      // Build combined varianceReason for backward compat with Google Sheets
+      varianceReason: [data.originArrivalNote, data.originDepartureNote, data.destArrivalNote, data.destDepartureNote].filter(Boolean).join(' | '),
     };
 
     // Prepare main fields for actual times (ISO string if date provided)
@@ -269,14 +369,19 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
         plannedDeparture: currentTimes.origin.plannedDeparture,
         actualArrival: data.originActualArrival || currentTimes.origin.actualArrival,
         actualDeparture: data.originActualDeparture || currentTimes.origin.actualDeparture,
+        arrivalNote: data.originArrivalNote || '',
+        departureNote: data.originDepartureNote || '',
       },
       destination: {
         plannedArrival: currentTimes.destination.plannedArrival,
         plannedDeparture: currentTimes.destination.plannedDeparture,
         actualArrival: data.destActualArrival || currentTimes.destination.actualArrival,
         actualDeparture: data.destActualDeparture || currentTimes.destination.actualDeparture,
+        arrivalNote: data.destArrivalNote || '',
+        departureNote: data.destDepartureNote || '',
       },
       backload: currentTimes.backload, // Preserve existing backload data
+      varianceReason: [data.originArrivalNote, data.originDepartureNote, data.destArrivalNote, data.destDepartureNote].filter(Boolean).join(' | '),
     };
 
     // Prepare main fields for actual times (ISO string if date provided)
@@ -392,6 +497,7 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
                         <FormControl>
                           <Input type="time" className="border-green-300" {...field} />
                         </FormControl>
+                        <VarianceNote planned={times.origin.plannedArrival} actual={field.value} noteValue={form.watch('originArrivalNote')} onNoteChange={(v) => form.setValue('originArrivalNote', v)} />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -411,6 +517,7 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
                         <FormControl>
                           <Input type="time" className="border-green-300" {...field} />
                         </FormControl>
+                        <VarianceNote planned={times.origin.plannedDeparture} actual={field.value} noteValue={form.watch('originDepartureNote')} onNoteChange={(v) => form.setValue('originDepartureNote', v)} />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -463,6 +570,7 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
                         <FormControl>
                           <Input type="time" className="border-blue-300" {...field} />
                         </FormControl>
+                        <VarianceNote planned={times.destination.plannedArrival} actual={field.value} noteValue={form.watch('destArrivalNote')} onNoteChange={(v) => form.setValue('destArrivalNote', v)} />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -482,6 +590,7 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
                         <FormControl>
                           <Input type="time" className="border-blue-300" {...field} />
                         </FormControl>
+                        <VarianceNote planned={times.destination.plannedDeparture} actual={field.value} noteValue={form.watch('destDepartureNote')} onNoteChange={(v) => form.setValue('destDepartureNote', v)} />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -755,8 +864,14 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
               </>
             )}
 
+            <MissingTimesAlert 
+              form={form} 
+              load={load} 
+              showWarning={showMissingTimesWarning}
+            />
+
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => { onOpenChange(false); setShowMissingTimesWarning(false); }}>
                 Cancel
               </Button>
               <Button 
@@ -767,11 +882,25 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
               >
                 {verificationOnly ? 'Save Verification' : 'Save Times Only'}
               </Button>
-              {!verificationOnly && (
+              {!verificationOnly && !showMissingTimesWarning && (
                 <Button 
-                  type="submit" 
+                  type="button"
                   className="bg-green-600 hover:bg-green-700"
                   disabled={updateLoad.isPending || createLoad.isPending}
+                  onClick={() => {
+                    // Check if any actual times are missing before allowing delivery
+                    const values = form.getValues();
+                    const hasOriginArrival = !!values.originActualArrival || !!load?.actual_loading_arrival;
+                    const hasOriginDeparture = !!values.originActualDeparture || !!load?.actual_loading_departure;
+                    const hasDestArrival = !!values.destActualArrival || !!load?.actual_offloading_arrival;
+                    const hasDestDeparture = !!values.destActualDeparture || !!load?.actual_offloading_departure;
+                    
+                    if (!hasOriginArrival || !hasOriginDeparture || !hasDestArrival || !hasDestDeparture) {
+                      setShowMissingTimesWarning(true);
+                    } else {
+                      form.handleSubmit(handleSubmit)();
+                    }
+                  }}
                 >
                   {updateLoad.isPending || createLoad.isPending 
                     ? 'Processing...' 
@@ -780,10 +909,73 @@ export function DeliveryConfirmationDialog({ open, onOpenChange, load, verificat
                       : 'Mark as Delivered'}
                 </Button>
               )}
+              {!verificationOnly && showMissingTimesWarning && (
+                <Button 
+                  type="button" 
+                  className="bg-amber-600 hover:bg-amber-700"
+                  disabled={updateLoad.isPending || createLoad.isPending}
+                  onClick={() => {
+                    setShowMissingTimesWarning(false);
+                    form.handleSubmit(handleSubmit)();
+                  }}
+                >
+                  {updateLoad.isPending || createLoad.isPending 
+                    ? 'Processing...' 
+                    : 'Deliver Anyway (Verify Later)'}
+                </Button>
+              )}
             </div>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-component: amber warning alert when actual times are missing
+// ---------------------------------------------------------------------------
+
+function MissingTimesAlert({ form, load, showWarning }: { form: ReturnType<typeof useForm<FormData>>; load: Load; showWarning: boolean }) {
+  const values = useWatch({ control: form.control });
+
+  // Combine form values with already-saved values on the load
+  const missingFields: string[] = [];
+  if (!values.originActualArrival && !load.actual_loading_arrival) missingFields.push('Origin Arrival');
+  if (!values.originActualDeparture && !load.actual_loading_departure) missingFields.push('Origin Departure');
+  if (!values.destActualArrival && !load.actual_offloading_arrival) missingFields.push('Destination Arrival');
+  if (!values.destActualDeparture && !load.actual_offloading_departure) missingFields.push('Destination Departure');
+
+  if (missingFields.length === 0) return null;
+
+  return (
+    <>
+      {/* Always show a subtle info line about missing fields */}
+      {!showWarning && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs">
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+          <span>Missing: {missingFields.join(', ')}</span>
+        </div>
+      )}
+
+      {/* Full warning when confirming without times */}
+      {showWarning && (
+        <Alert variant="destructive" className="border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 [&>svg]:text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="font-semibold">Actual times not entered</AlertTitle>
+          <AlertDescription className="text-sm">
+            <p className="mb-1">
+              The following times are still missing:
+            </p>
+            <ul className="list-disc list-inside mb-2 font-medium">
+              {missingFields.map((f) => <li key={f}>{f}</li>)}
+            </ul>
+            <p>
+              You can still deliver now and verify times later — the load will be flagged as <span className="font-semibold text-red-600 dark:text-red-400">"Needs Verification"</span>.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+    </>
   );
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   customLocationToDepot,
   findDepotByName,
@@ -15,6 +16,7 @@ import { useCustomLocations } from "@/hooks/useCustomLocations";
 import {
   useGeofenceLoadUpdate,
   useLoads,
+  useLoadsRealtimeSync,
   type Load,
   type GeofenceEventType,
 } from "@/hooks/useLoads";
@@ -60,6 +62,7 @@ const GeofenceMonitorContext = createContext<GeofenceMonitorContextType | undefi
 export function GeofenceMonitorProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { data: loads = [] } = useLoads();
+  useLoadsRealtimeSync(); // Instant cache invalidation on any loads table change
   const { data: customLocations = [] } = useCustomLocations();
 
   const extraDepots = useMemo(

@@ -31,11 +31,13 @@ import
     formatLastConnected,
     type TelematicsAsset,
   } from "@/lib/telematicsGuru";
+import { parseTimeWindow } from "@/lib/timeWindow";
 import { cn, getLocationDisplayName } from "@/lib/utils";
 import { endOfWeek, format, formatDistanceToNow, parseISO, startOfWeek } from "date-fns";
 import
   {
     AlertCircle,
+    AlertTriangle,
     Box,
     Calendar,
     CheckCircle2,
@@ -633,8 +635,8 @@ export default function DeliveriesDashboardPage() {
                           {groupedTrucks.todayTrucks.length} {groupedTrucks.todayTrucks.length === 1 ? "truck" : "trucks"}
                         </Badge>
                       </div>
-                      {groupedTrucks.todayTrucks.map((truck, index) => (
-                        <TruckRow key={truck.vehicleId} truck={truck} index={index + 1} />
+                      {groupedTrucks.todayTrucks.map((truck) => (
+                        <TruckRow key={truck.vehicleId} truck={truck} />
                       ))}
                     </div>
                   )}
@@ -651,8 +653,8 @@ export default function DeliveriesDashboardPage() {
                           {groupedTrucks.upcomingTrucks.length} {groupedTrucks.upcomingTrucks.length === 1 ? "truck" : "trucks"}
                         </Badge>
                       </div>
-                      {groupedTrucks.upcomingTrucks.map((truck, index) => (
-                        <TruckRow key={truck.vehicleId} truck={truck} index={index + 1} />
+                      {groupedTrucks.upcomingTrucks.map((truck) => (
+                        <TruckRow key={truck.vehicleId} truck={truck} />
                       ))}
                     </div>
                   )}
@@ -669,8 +671,8 @@ export default function DeliveriesDashboardPage() {
                           {groupedTrucks.pastTrucks.length} {groupedTrucks.pastTrucks.length === 1 ? "truck" : "trucks"}
                         </Badge>
                       </div>
-                      {groupedTrucks.pastTrucks.map((truck, index) => (
-                        <TruckRow key={truck.vehicleId} truck={truck} index={index + 1} />
+                      {groupedTrucks.pastTrucks.map((truck) => (
+                        <TruckRow key={truck.vehicleId} truck={truck} />
                       ))}
                     </div>
                   )}
@@ -721,7 +723,7 @@ function StatCard({
 // TRUCK ROW
 // ============================================================================
 
-function TruckRow({ truck, index }: { truck: TruckWithLoads; index: number }) {
+function TruckRow({ truck }: { truck: TruckWithLoads }) {
   const hasInTransit = truck.loads.some((l) => l.status === "in-transit");
   const isAtOrigin = truck.loads.some((l) => l.isAtLoadOrigin && l.status === "scheduled");
 
@@ -760,18 +762,7 @@ function TruckRow({ truck, index }: { truck: TruckWithLoads; index: number }) {
           )}
         >
           <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-sm font-bold px-3 py-1.5 rounded-lg shadow-sm",
-                  hasInTransit && "border-blue-300 bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 dark:from-blue-900/50 dark:to-blue-950/30 dark:text-blue-300 dark:border-blue-700/50",
-                  isAtOrigin && !hasInTransit && "border-purple-300 bg-gradient-to-r from-purple-100 to-purple-50 text-purple-700 dark:from-purple-900/50 dark:to-purple-950/30 dark:text-purple-300 dark:border-purple-700/50",
-                  !hasInTransit && !isAtOrigin && "border-slate-300 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 dark:border-slate-600"
-                )}
-              >
-                #{String(index).padStart(2, "0")}
-              </Badge>
+            <div className="flex items-center justify-end mb-3">
               <div className="flex items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger>
@@ -923,6 +914,38 @@ function LoadCard({
   const detailedStatus = getDetailedStatus();
   const StatusIcon = detailedStatus.icon;
 
+  // Parse planned times from time_window
+  const tw = parseTimeWindow(load.time_window);
+
+  // Compute variance between planned and actual times
+  const computeCardVariance = (planned: string | undefined, actual: string | null | undefined) => {
+    if (!planned || !actual) return null;
+    const toMin = (t: string) => {
+      const hm = t.match(/^(\d{1,2}):(\d{2})$/);
+      if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
+      const iso = t.match(/T(\d{2}):(\d{2})/);
+      if (iso) return parseInt(iso[1], 10) * 60 + parseInt(iso[2], 10);
+      return null;
+    };
+    const pMin = toMin(planned);
+    const aMin = toMin(actual);
+    if (pMin === null || aMin === null) return null;
+    const diff = aMin - pMin;
+    if (diff <= 0) return null; // Only flag late times
+    const hrs = Math.floor(diff / 60);
+    const mins = diff % 60;
+    const parts: string[] = [];
+    if (hrs > 0) parts.push(`${hrs}h`);
+    if (mins > 0) parts.push(`${mins}m`);
+    return parts.join(" ") + " late";
+  };
+
+  const lateLoadingArrival = computeCardVariance(tw.origin.plannedArrival, load.actual_loading_arrival);
+  const lateLoadingDeparture = computeCardVariance(tw.origin.plannedDeparture, load.actual_loading_departure);
+  const lateOffloadingArrival = computeCardVariance(tw.destination.plannedArrival, load.actual_offloading_arrival);
+  const lateOffloadingDeparture = computeCardVariance(tw.destination.plannedDeparture, load.actual_offloading_departure);
+  const hasAnyLateTime = !!(lateLoadingArrival || lateLoadingDeparture || lateOffloadingArrival || lateOffloadingDeparture);
+
   // Format timestamp for display
   const formatTimestamp = (timestamp: string | null | undefined) => {
     if (!timestamp) return null;
@@ -970,12 +993,13 @@ function LoadCard({
             <div
               className={cn(
                 "h-1.5 w-full rounded-t-lg",
-                isDelivered && "bg-gradient-to-r from-emerald-400 to-emerald-500",
-                isInTransit && !isDelivered && "bg-gradient-to-r from-blue-400 to-blue-500",
-                isAtLoadingPoint && "bg-gradient-to-r from-violet-400 to-violet-500",
-                isAtOffloadingPoint && !isDelivered && "bg-gradient-to-r from-purple-400 to-purple-500",
-                load.isAtLoadOrigin && !isInTransit && !isDelivered && !isAtLoadingPoint && "bg-gradient-to-r from-purple-400 to-purple-500",
-                isWaiting && !isDelivered && "bg-gradient-to-r from-amber-300 to-amber-400"
+                hasAnyLateTime && "bg-gradient-to-r from-red-400 to-red-500",
+                !hasAnyLateTime && isDelivered && "bg-gradient-to-r from-emerald-400 to-emerald-500",
+                !hasAnyLateTime && isInTransit && !isDelivered && "bg-gradient-to-r from-blue-400 to-blue-500",
+                !hasAnyLateTime && isAtLoadingPoint && "bg-gradient-to-r from-violet-400 to-violet-500",
+                !hasAnyLateTime && isAtOffloadingPoint && !isDelivered && "bg-gradient-to-r from-purple-400 to-purple-500",
+                !hasAnyLateTime && load.isAtLoadOrigin && !isInTransit && !isDelivered && !isAtLoadingPoint && "bg-gradient-to-r from-purple-400 to-purple-500",
+                !hasAnyLateTime && isWaiting && !isDelivered && "bg-gradient-to-r from-amber-300 to-amber-400"
               )}
             />
 
@@ -1045,6 +1069,17 @@ function LoadCard({
                         {hasDepartedLoading && ` • Departed: ${formatTimestamp(load.actual_loading_departure)}`}
                       </p>
                     )}
+                    {/* Late notes for loading */}
+                    {(lateLoadingArrival || lateLoadingDeparture) && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                        <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">
+                          {lateLoadingArrival && `Arr: ${lateLoadingArrival}`}
+                          {lateLoadingArrival && lateLoadingDeparture && " • "}
+                          {lateLoadingDeparture && `Dep: ${lateLoadingDeparture}`}
+                        </span>
+                      </div>
+                    )}
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium mt-3">Destination</p>
                     <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                       {getLocationDisplayName(load.destination)}
@@ -1055,6 +1090,17 @@ function LoadCard({
                         Arrived: {formatTimestamp(load.actual_offloading_arrival)}
                         {hasDepartedOffloading && ` • Departed: ${formatTimestamp(load.actual_offloading_departure)}`}
                       </p>
+                    )}
+                    {/* Late notes for offloading */}
+                    {(lateOffloadingArrival || lateOffloadingDeparture) && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                        <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">
+                          {lateOffloadingArrival && `Arr: ${lateOffloadingArrival}`}
+                          {lateOffloadingArrival && lateOffloadingDeparture && " • "}
+                          {lateOffloadingDeparture && `Dep: ${lateOffloadingDeparture}`}
+                        </span>
+                      </div>
                     )}
                   </div>
                   <div className="text-right pl-2">

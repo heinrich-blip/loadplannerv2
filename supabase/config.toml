@@ -3,3 +3,7 @@ project_id = "tgqtcybixzjvdtwrojgq"
 [functions.telematics-proxy]
 # Disable JWT verification for this function since it proxies to external API
 verify_jwt = false
+
+[functions.google-sheets-sync]
+# Google Sheets sync - called by database webhooks and manual triggers
+verify_jwt = false

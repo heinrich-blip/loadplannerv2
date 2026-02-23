@@ -11,8 +11,9 @@ import {
   exportLoadsToExcel,
   exportLoadsToExcelSimplified,
 } from "@/lib/exportLoadsToExcel";
+import { exportTimeComparisonToExcel } from "@/lib/exportTimeComparisonToExcel";
 import { isWithinInterval, parseISO, startOfDay, startOfWeek, endOfWeek, getWeek } from "date-fns";
-import { ChevronDown, FileSpreadsheet, Plus } from "lucide-react";
+import { ChevronDown, Clock, FileSpreadsheet, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,6 +105,14 @@ export default function LoadsPage() {
     }
   };
 
+  const handleExportTimeComparison = () => {
+    const weekOpts = { weekStartsOn: 1 as const };
+    const refDate = weekFilter.start ?? new Date();
+    const weekNumber = getWeek(refDate, weekOpts);
+    const year = refDate.getFullYear();
+    exportTimeComparisonToExcel(filteredLoads, { weekNumber, year });
+  };
+
   return (
     <MainLayout title="Load Planning">
       <div className="space-y-6 animate-fade-in">
@@ -133,6 +142,10 @@ export default function LoadsPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExportExcel(true)}>
                   Simplified Export
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportTimeComparison}>
+                  <Clock className="h-4 w-4 mr-2" />
+                  Time Comparison (Planned vs Actual)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

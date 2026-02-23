@@ -1,7 +1,10 @@
 /**
  * Fixed Depot/Waypoint Coordinates
- * These are the loading and offloading locations used for route tracking
+ * These are the loading and offloading locations used for route tracking.
+ * Also imports waypoints from the geofences JSON file as fallback locations.
  */
+
+import { waypoints as waypointsData } from './waypoints';
 
 export interface Depot {
   id: string;
@@ -519,14 +522,53 @@ export function calculateDistance(
   return R * c; // Distance in kilometers
 }
 
+// ---------------------------------------------------------------------------
+// Waypoint → Depot conversion (fallback locations from geofences JSON)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_WAYPOINT_RADIUS = 500; // metres
+
+/**
+ * Convert the raw waypoints JSON into Depot objects so they can be used
+ * as geofence locations alongside the hardcoded DEPOTS and DB custom locations.
+ */
+export const WAYPOINT_DEPOTS: Depot[] = (waypointsData as { name: string; address?: string; latitude: number; longitude: number }[]).map((wp) => {
+  // Infer country from address string
+  let country: Depot['country'] = 'Zimbabwe';
+  const addr = (wp.address || '').toLowerCase();
+  if (addr.includes('south africa')) country = 'South Africa';
+  else if (addr.includes('zambia')) country = 'Zambia';
+  else if (addr.includes('mozambique')) country = 'Mozambique';
+  else if (addr.includes('botswana')) country = 'Botswana';
+
+  return {
+    id: `wp-${wp.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')}`,
+    name: wp.name,
+    latitude: wp.latitude,
+    longitude: wp.longitude,
+    type: 'customer' as const,
+    country,
+    radius: DEFAULT_WAYPOINT_RADIUS,
+  };
+});
+
+/**
+ * Combined list of all known locations: hardcoded depots + waypoints.
+ * Depots take priority (listed first) so exact matches against DEPOTS win.
+ */
+export const ALL_LOCATIONS: Depot[] = [...DEPOTS, ...WAYPOINT_DEPOTS];
+
 /**
  * Find a depot by its name (case-insensitive, partial matching).
- * Optionally accepts extra locations (e.g. custom locations from DB) to search alongside DEPOTS.
+ * Searches in order: DEPOTS → extraLocations (custom DB) → WAYPOINT_DEPOTS.
  */
 export function findDepotByName(name: string, extraLocations?: Depot[]): Depot | undefined {
   if (!name) return undefined;
   
-  const allLocations = extraLocations ? [...DEPOTS, ...extraLocations] : DEPOTS;
+  // Build combined search list: depots first, then custom, then waypoints
+  const allLocations = extraLocations
+    ? [...DEPOTS, ...extraLocations, ...WAYPOINT_DEPOTS]
+    : [...DEPOTS, ...WAYPOINT_DEPOTS];
   const normalizedName = name.toLowerCase().trim();
   
   // Try exact match first
@@ -546,7 +588,7 @@ export function findDepotByName(name: string, extraLocations?: Depot[]): Depot |
   
   // Handle common variations
   if (normalizedName.includes("freshmark") && !depot) {
-    return allLocations.find(d => d.name.includes("Freshmark"));
+    return allLocations.find(d => d.name.toLowerCase().includes("freshmark"));
   }
   
   if (normalizedName.includes("beitbridge") || normalizedName.includes("beit bridge")) {
