@@ -116,8 +116,12 @@ export function CreateDieselOrderDialog({
   }, [open, preselectedLoadId, form]);
 
   // Filter to show only active loads (scheduled or in-transit)
+  // Also include the preselected load even if it's not active (e.g. delivered)
   const activeLoads = loads.filter(
-    (load) => load.status === "scheduled" || load.status === "in-transit",
+    (load) =>
+      load.status === "scheduled" ||
+      load.status === "in-transit" ||
+      (preselectedLoadId && load.id === preselectedLoadId),
   );
 
   const handleSubmit = (data: FormData) => {

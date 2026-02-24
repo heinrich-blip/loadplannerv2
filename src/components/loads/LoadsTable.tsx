@@ -44,6 +44,7 @@ import {
   Calendar,
   Clock,
   FileDown,
+  Fuel,
   MapPin,
   MoreHorizontal,
   Navigation,
@@ -57,6 +58,7 @@ import {
 import { useMemo, useState } from "react";
 import { AddBackloadDialog } from "./AddBackloadDialog";
 import { AddThirdPartyBackloadDialog } from "./AddThirdPartyBackloadDialog";
+import { CreateDieselOrderDialog } from "@/components/diesel/CreateDieselOrderDialog";
 import { StatusStepper } from "./StatusToggle";
 import { VehicleTrackingDialog } from "./VehicleTrackingDialog";
 
@@ -158,6 +160,8 @@ export function LoadsTable({
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [loadForDelivery, setLoadForDelivery] = useState<Load | null>(null);
   const [verificationOnly, setVerificationOnly] = useState(false);
+  const [dieselOrderDialogOpen, setDieselOrderDialogOpen] = useState(false);
+  const [loadForDieselOrder, setLoadForDieselOrder] = useState<Load | null>(null);
 
   const deleteLoad = useDeleteLoad();
   
@@ -642,7 +646,18 @@ export function LoadsTable({
                               </DropdownMenuItem>
                             )}
 
-                            
+                            {load.fleet_vehicle && (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLoadForDieselOrder(load);
+                                  setDieselOrderDialogOpen(true);
+                                }}
+                              >
+                                <Fuel className="h-4 w-4 mr-2" />
+                                Create Diesel Order
+                              </DropdownMenuItem>
+                            )}
 
                             <DropdownMenuItem
                               onClick={(e) =>
@@ -741,6 +756,15 @@ export function LoadsTable({
         open={alterDialogOpen}
         onOpenChange={setAlterDialogOpen}
         load={loadToAlter}
+      />
+
+      <CreateDieselOrderDialog
+        open={dieselOrderDialogOpen}
+        onOpenChange={(open) => {
+          setDieselOrderDialogOpen(open);
+          if (!open) setLoadForDieselOrder(null);
+        }}
+        preselectedLoadId={loadForDieselOrder?.id}
       />
     </div>
   );

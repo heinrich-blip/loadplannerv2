@@ -262,20 +262,26 @@ export default function ClientLiveMapPage() {
     });
   }, [loads, telematicsAssets]);
 
-  // Get unique depots for loads
+  // Only in-transit loads appear on the map
+  const inTransitMatchedLoads = useMemo(
+    () => matchedLoads.filter(({ load }) => load.status === 'in-transit'),
+    [matchedLoads]
+  );
+
+  // Get unique depots for in-transit loads (shown on map)
   const relevantDepots = useMemo(() => {
     const depotNames = new Set<string>();
-    loads.forEach((load) => {
+    inTransitMatchedLoads.forEach(({ load }) => {
       const originName = getLocationDisplayName(load.origin);
       const destName = getLocationDisplayName(load.destination);
       depotNames.add(originName);
       depotNames.add(destName);
     });
     return allDepots.filter((d) => depotNames.has(d.name));
-  }, [loads, allDepots]);
+  }, [inTransitMatchedLoads, allDepots]);
 
-  // Vehicles with loads and positions
-  const trackedVehicles = matchedLoads.filter(
+  // In-transit vehicles with GPS positions (for map markers)
+  const inTransitTrackedVehicles = inTransitMatchedLoads.filter(
     (m) => m.asset && m.asset.lastLatitude && m.asset.lastLongitude
   );
 
@@ -289,9 +295,9 @@ export default function ClientLiveMapPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
             <MapPin className="h-5 w-5 text-purple-500" />
             Live Tracking
           </h2>
@@ -301,7 +307,7 @@ export default function ClientLiveMapPage() {
         </div>
         <div className="flex items-center gap-3">
           {lastRefresh && (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
               Updated {formatLastConnected(lastRefresh.toISOString())}
             </span>
           )}
@@ -318,7 +324,7 @@ export default function ClientLiveMapPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Loads</CardTitle>
@@ -354,24 +360,24 @@ export default function ClientLiveMapPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Tracked</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Tracked (In Transit)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-2">
               <Navigation className="h-5 w-5 text-green-500" />
-              {trackedVehicles.length}
+              {inTransitTrackedVehicles.length}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Vehicle Selection Bar */}
-      {trackedVehicles.length > 0 && (
+      {/* Vehicle Selection Bar - only in-transit vehicles */}
+      {inTransitTrackedVehicles.length > 0 && (
         <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-lg">
           <span className="text-sm font-medium text-muted-foreground px-2 py-1">
             Select vehicle to show route:
           </span>
-          {trackedVehicles.map(({ load, asset }) => (
+          {inTransitTrackedVehicles.map(({ load, asset }) => (
             <Button
               key={load.id}
               variant={selectedVehicleId === asset?.id.toString() ? "default" : "outline"}
@@ -403,10 +409,10 @@ export default function ClientLiveMapPage() {
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           {isLoading ? (
-            <Skeleton className="w-full h-[500px]" />
+            <Skeleton className="w-full h-[350px] sm:h-[500px]" />
           ) : telematicsError ? (
-            <div className="w-full h-[500px] flex items-center justify-center bg-muted/50">
-              <div className="text-center">
+            <div className="w-full h-[350px] sm:h-[500px] flex items-center justify-center bg-muted/50">
+              <div className="text-center px-4">
                 <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                 <p className="text-muted-foreground">Unable to load tracking data</p>
                 <Button variant="outline" size="sm" className="mt-4" onClick={fetchTelematicsData}>
@@ -414,21 +420,22 @@ export default function ClientLiveMapPage() {
                 </Button>
               </div>
             </div>
-          ) : loads.length === 0 ? (
-            <div className="w-full h-[500px] flex items-center justify-center bg-muted/50">
-              <div className="text-center">
+          ) : inTransitMatchedLoads.length === 0 ? (
+            <div className="w-full h-[350px] sm:h-[500px] flex items-center justify-center bg-muted/50">
+              <div className="text-center px-4">
                 <Package className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No active loads to track</p>
+                <p className="text-muted-foreground">No in-transit loads to track</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Active shipments will appear here in real-time
+                  In-transit shipments will appear here in real-time
                 </p>
               </div>
             </div>
           ) : (
+            <div className="h-[350px] sm:h-[500px]">
             <MapContainer
               center={[-19.5, 30.5]}
               zoom={7}
-              style={{ height: '500px', width: '100%' }}
+              style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -436,8 +443,8 @@ export default function ClientLiveMapPage() {
               />
 
               <FitBounds
-                assets={trackedVehicles.map((t) => t.asset!)}
-                loads={loads}
+                assets={inTransitTrackedVehicles.map((t) => t.asset!)}
+                loads={inTransitMatchedLoads.map((t) => t.load)}
                 allDepots={allDepots}
               />
 
@@ -459,8 +466,8 @@ export default function ClientLiveMapPage() {
                 </Circle>
               ))}
 
-              {/* Vehicle Markers */}
-              {trackedVehicles.map(({ load, asset }) => {
+              {/* Vehicle Markers - only in-transit */}
+              {inTransitTrackedVehicles.map(({ load, asset }) => {
                 if (!asset || !asset.lastLatitude || !asset.lastLongitude) return null;
 
                 const destName = getLocationDisplayName(load.destination);
@@ -591,6 +598,7 @@ export default function ClientLiveMapPage() {
                 );
               })}
             </MapContainer>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -618,14 +626,14 @@ export default function ClientLiveMapPage() {
                 <div 
                   key={load.id} 
                   className={cn(
-                    "py-3 flex items-center justify-between cursor-pointer hover:bg-muted/50 px-2 rounded-lg transition-colors",
+                    "py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 cursor-pointer hover:bg-muted/50 px-2 rounded-lg transition-colors",
                     selectedVehicleId === asset?.id.toString() && "bg-purple-50 dark:bg-purple-950/20 border-l-4 border-purple-500"
                   )}
                   onClick={() => asset && handleVehicleSelect(asset.id.toString())}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-lg",
+                      "flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0",
                       selectedVehicleId === asset?.id.toString() 
                         ? "bg-purple-200 dark:bg-purple-800" 
                         : "bg-purple-100 dark:bg-purple-900/30"
@@ -637,16 +645,16 @@ export default function ClientLiveMapPage() {
                           : "text-purple-600 dark:text-purple-400"
                       )} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="font-medium">{load.load_id}</div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground truncate">
                         {getLocationDisplayName(load.origin)} → {getLocationDisplayName(load.destination)}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 ml-13 sm:ml-0 flex-wrap">
                     {load.fleet_vehicle && (
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
                         {load.fleet_vehicle.vehicle_id}
                       </span>
                     )}

@@ -222,14 +222,28 @@ export function GeofenceMonitorProvider({ children }: { children: ReactNode }) {
     const updatedVehiclesInTick = new Set<string>();
 
     for (const load of activeLoads) {
-      // Gate: Only process the earliest NOT-DELIVERED load for each vehicle.
+      // Gate: Only process the single "current" load for each vehicle.
+      // Priority: in-transit first (the load actively being delivered), then
+      // earliest by offloading_date, then loading_date. This prevents a
+      // scheduled future load from receiving geofence events meant for the
+      // load the driver is currently busy with.
       const gateVehicleId = load.fleet_vehicle?.vehicle_id || "unassigned";
       if (gateVehicleId !== "unassigned") {
+        const statusPriority: Record<string, number> = { 'in-transit': 0, 'scheduled': 1, 'pending': 2 };
         const notDeliveredForVehicle = loadsWithAssets
           .filter((l) => (l.fleet_vehicle?.vehicle_id || "unassigned") === gateVehicleId && l.status !== "delivered")
-          .sort((a, b) => (parseISO(a.loading_date).getTime() || 0) - (parseISO(b.loading_date).getTime() || 0));
-        const earliestNotDelivered = notDeliveredForVehicle[0];
-        if (earliestNotDelivered && earliestNotDelivered.id !== load.id) {
+          .sort((a, b) => {
+            // 1. Prefer in-transit over scheduled/pending
+            const sPri = (statusPriority[a.status] ?? 3) - (statusPriority[b.status] ?? 3);
+            if (sPri !== 0) return sPri;
+            // 2. Earlier offloading_date first (the one due soonest)
+            const offDiff = (parseISO(a.offloading_date).getTime() || 0) - (parseISO(b.offloading_date).getTime() || 0);
+            if (offDiff !== 0) return offDiff;
+            // 3. Fallback: earlier loading_date
+            return (parseISO(a.loading_date).getTime() || 0) - (parseISO(b.loading_date).getTime() || 0);
+          });
+        const currentLoadForVehicle = notDeliveredForVehicle[0];
+        if (currentLoadForVehicle && currentLoadForVehicle.id !== load.id) {
           continue;
         }
       }
@@ -272,8 +286,15 @@ export function GeofenceMonitorProvider({ children }: { children: ReactNode }) {
           }
         };
 
-        const isAtOrigin = applyHysteresis(originKeyForHyst, originInsideRaw, requiresHysteresis(originDepot.name, originDepot.type));
-        const isAtDestination = applyHysteresis(destKeyForHyst, destInsideRaw, requiresHysteresis(destinationDepot.name, destinationDepot.type));
+        // Always run hysteresis to keep counters in sync
+        const isAtOriginHyst = applyHysteresis(originKeyForHyst, originInsideRaw, requiresHysteresis(originDepot.name, originDepot.type));
+        const isAtDestHyst = applyHysteresis(destKeyForHyst, destInsideRaw, requiresHysteresis(destinationDepot.name, destinationDepot.type));
+
+        // On first observation (no previous position), bypass hysteresis and use raw
+        // geofence check so vehicles already inside a geofence are detected immediately
+        // instead of waiting for the 10-minute dwell-time fallback.
+        const isAtOrigin = previousPos ? isAtOriginHyst : originInsideRaw;
+        const isAtDestination = previousPos ? isAtDestHyst : destInsideRaw;
 
         const wasAtOrigin = previousPos
           ? isWithinDepot(previousPos.lat, previousPos.lon, originDepot)

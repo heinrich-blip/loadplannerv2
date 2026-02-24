@@ -10,7 +10,7 @@ import {
   Package,
   Route,
 } from 'lucide-react';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { NavLink, useParams, useLocation } from 'react-router-dom';
 
 interface ClientDashboardLayoutProps {
@@ -36,11 +36,11 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-lg overflow-hidden bg-white">
-                <img src="/loadplan-logo.png" alt="LoadPlan" className="h-14 w-14 object-contain" />
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-lg overflow-hidden bg-white flex-shrink-0">
+                <img src="/loadplan-logo.png" alt="LoadPlan" className="h-10 w-10 sm:h-14 sm:w-14 object-contain" />
               </div>
               {isLoading ? (
                 <div className="space-y-1">
@@ -48,8 +48,8 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
                   <Skeleton className="h-3 w-24" />
                 </div>
               ) : (
-                <div>
-                  <h1 className="font-semibold text-lg">{client?.name || 'Client Portal'}</h1>
+                <div className="min-w-0">
+                  <h1 className="font-semibold text-base sm:text-lg truncate">{client?.name || 'Client Portal'}</h1>
                   <p className="text-xs text-muted-foreground">Customer Portal</p>
                 </div>
               )}
@@ -68,8 +68,8 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
             )}
           </div>
 
-          {/* Navigation */}
-          <nav className="flex items-center gap-1 mt-4 -mb-px">
+          {/* Navigation — horizontally scrollable on mobile */}
+          <nav className="flex items-center gap-1 mt-3 sm:mt-4 -mb-px overflow-x-auto scrollbar-none -mx-3 px-3 sm:-mx-0 sm:px-0">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -77,7 +77,7 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
                 end={item.path === ''}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors',
+                    'flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap flex-shrink-0',
                     'hover:bg-accent hover:text-accent-foreground',
                     isActive
                       ? 'bg-background border border-b-0 text-foreground'
@@ -86,7 +86,8 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
                 }
               >
                 <item.icon className="h-4 w-4" />
-                {item.title}
+                <span className="hidden xs:inline sm:inline">{item.title}</span>
+                <span className="xs:hidden sm:hidden">{item.title}</span>
               </NavLink>
             ))}
           </nav>
@@ -94,7 +95,7 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6">
+      <main className="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {children}
       </main>
 

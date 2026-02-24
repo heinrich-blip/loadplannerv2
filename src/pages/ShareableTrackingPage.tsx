@@ -6,7 +6,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   Calendar,
+  CheckCircle2,
   Clock,
   Loader2,
   MapPin,
@@ -30,6 +33,7 @@ import {
 import { findDepotByName, customLocationToDepot } from "@/lib/depots";
 import { useCustomLocations } from "@/hooks/useCustomLocations";
 import { calculateRoadDistance, decodePolyline } from "@/lib/routing";
+import { parseTimeWindow, computeTimeVariance, formatTimeAsSAST } from "@/lib/timeWindow";
 import { useSearchParams } from "react-router-dom";
 
 // Fix Leaflet default icons
@@ -75,6 +79,11 @@ interface TrackingShareLink {
     offloading_date: string;
     cargo_type: string;
     status: string;
+    time_window: unknown;
+    actual_loading_arrival: string | null;
+    actual_loading_departure: string | null;
+    actual_offloading_arrival: string | null;
+    actual_offloading_departure: string | null;
     driver?: { name: string; contact: string } | null;
     fleet_vehicle?: {
       vehicle_id: string;
@@ -235,6 +244,11 @@ export default function ShareableTrackingPage() {
             offloading_date,
             cargo_type,
             status,
+            time_window,
+            actual_loading_arrival,
+            actual_loading_departure,
+            actual_offloading_arrival,
+            actual_offloading_departure,
             driver:drivers!loads_driver_id_fkey(name, contact),
             fleet_vehicle:fleet_vehicles(vehicle_id, type, telematics_asset_id)
           )
@@ -513,32 +527,32 @@ export default function ShareableTrackingPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Truck className="w-6 h-6 text-white" />
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                   Live Vehicle Tracking
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs sm:text-sm text-gray-500 truncate">
                   Load: {load?.load_id || "Unknown"}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               {shareLink && (
-                <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                  <Clock className="w-3 h-3 inline mr-1" />
+                <span className="text-[10px] sm:text-xs text-orange-600 bg-orange-50 px-1.5 sm:px-2 py-1 rounded hidden sm:inline-flex items-center">
+                  <Clock className="w-3 h-3 mr-1" />
                   {formatTimeRemaining(shareLink.expires_at)}
                 </span>
               )}
               {asset && (
-                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                <span className="text-[10px] sm:text-xs text-green-600 bg-green-50 px-1.5 sm:px-2 py-1 rounded hidden sm:inline-flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full inline-block mr-1 animate-pulse" />
-                  Auto-refresh
+                  Live
                 </span>
               )}
               <Button
@@ -546,20 +560,21 @@ export default function ShareableTrackingPage() {
                 size="sm"
                 onClick={fetchVehiclePosition}
                 disabled={loadingVehicle || !shareLink}
+                className="h-8 px-2 sm:px-3"
               >
                 {loadingVehicle ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" />
                 ) : (
-                  <RefreshCw className="w-4 h-4 mr-1" />
+                  <RefreshCw className="w-4 h-4 sm:mr-1" />
                 )}
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-4 space-y-4">
+      <div className="max-w-7xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
         {load && (
           <Card>
             <CardHeader className="pb-3">
@@ -569,7 +584,7 @@ export default function ShareableTrackingPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="w-4 h-4 text-green-500" />
@@ -617,6 +632,59 @@ export default function ShareableTrackingPage() {
                   )}
                 </div>
               </div>
+
+              {/* Actual Times & Variances */}
+              {(() => {
+                const tw = parseTimeWindow(load.time_window);
+                const hasAnyActual = load.actual_loading_arrival || load.actual_loading_departure || load.actual_offloading_arrival || load.actual_offloading_departure;
+                if (!hasAnyActual) return null;
+
+                const timePoints = [
+                  { label: 'Loading Arrival', actual: load.actual_loading_arrival, planned: tw.origin.plannedArrival },
+                  { label: 'Loading Departure', actual: load.actual_loading_departure, planned: tw.origin.plannedDeparture },
+                  { label: 'Offloading Arrival', actual: load.actual_offloading_arrival, planned: tw.destination.plannedArrival },
+                  { label: 'Offloading Departure', actual: load.actual_offloading_departure, planned: tw.destination.plannedDeparture },
+                ].filter(tp => tp.actual);
+
+                if (timePoints.length === 0) return null;
+
+                return (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {timePoints.map((tp) => {
+                        const v = computeTimeVariance(tp.planned, tp.actual);
+                        return (
+                          <div key={tp.label} className="flex flex-col gap-1">
+                            <span className="text-xs text-gray-500 font-medium">{tp.label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                              <span className="text-sm font-semibold text-gray-900">{formatTimeAsSAST(tp.actual)}</span>
+                            </div>
+                            {tp.planned && (
+                              <span className="text-xs text-gray-400">Planned: {formatTimeAsSAST(tp.planned) || tp.planned}</span>
+                            )}
+                            {v.diffMin !== null && v.diffMin !== 0 && (
+                              v.isLate ? (
+                                <span className={`inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded border ${
+                                  v.diffMin > 60
+                                    ? 'text-red-700 bg-red-50 border-red-200'
+                                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                                }`}>
+                                  <ArrowUp className="w-3 h-3" />{v.label}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                                  <ArrowDown className="w-3 h-3" />{v.label}
+                                </span>
+                              )
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         )}
@@ -687,7 +755,7 @@ export default function ShareableTrackingPage() {
         )}
 
         <Card className="overflow-hidden">
-          <div className="h-[60vh] min-h-[400px] relative">
+          <div className="h-[50vh] sm:h-[60vh] min-h-[300px] sm:min-h-[400px] relative">
             <MapContainer
               center={
                 asset?.lastLatitude !== null &&

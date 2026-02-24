@@ -129,7 +129,7 @@ export default function ClientLoadsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Loads</CardTitle>
@@ -196,8 +196,8 @@ export default function ClientLoadsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0 sm:min-w-[200px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -212,7 +212,7 @@ export default function ClientLoadsPage() {
                 value={statusFilter}
                 onValueChange={(value) => setStatusFilter(value as StatusFilter)}
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -227,7 +227,7 @@ export default function ClientLoadsPage() {
                 value={dateFilter}
                 onValueChange={(value) => setDateFilter(value as typeof dateFilter)}
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Date Range" />
                 </SelectTrigger>
                 <SelectContent>
@@ -275,26 +275,35 @@ export default function ClientLoadsPage() {
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Load ID</TableHead>
-                      <TableHead>Route</TableHead>
-                      <TableHead>Loading Date</TableHead>
-                      <TableHead>Delivery Date</TableHead>
-                      <TableHead>Vehicle</TableHead>
-                      <TableHead>Driver</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLoads.map((load) => (
-                      <LoadRow key={load.id} load={load} />
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <>
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Load ID</TableHead>
+                        <TableHead>Route</TableHead>
+                        <TableHead>Loading Date</TableHead>
+                        <TableHead>Delivery Date</TableHead>
+                        <TableHead>Vehicle</TableHead>
+                        <TableHead>Driver</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredLoads.map((load) => (
+                        <LoadRow key={load.id} load={load} />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile Card List */}
+                <div className="md:hidden space-y-3">
+                  {filteredLoads.map((load) => (
+                    <MobileLoadCard key={load.id} load={load} />
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -354,5 +363,44 @@ function LoadRow({ load }: { load: Load }) {
         <StatusBadge status={load.status} />
       </TableCell>
     </TableRow>
+  );
+}
+
+function MobileLoadCard({ load }: { load: Load }) {
+  const origin = getLocationDisplayName(load.origin);
+  const destination = getLocationDisplayName(load.destination);
+
+  return (
+    <div className="border rounded-lg p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-purple-500" />
+          <span className="font-medium text-sm">{load.load_id}</span>
+        </div>
+        <StatusBadge status={load.status} />
+      </div>
+      <div className="text-sm text-muted-foreground truncate">
+        {origin} → {destination}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <Calendar className="h-3 w-3" />
+          Load: {safeFormatDate(load.loading_date, 'dd MMM')}
+        </div>
+        <div className="flex items-center gap-1">
+          <Calendar className="h-3 w-3" />
+          Del: {safeFormatDate(load.offloading_date, 'dd MMM')}
+        </div>
+        {load.fleet_vehicle && (
+          <div className="flex items-center gap-1">
+            <Truck className="h-3 w-3" />
+            {load.fleet_vehicle.vehicle_id}
+          </div>
+        )}
+        {load.driver && (
+          <span>{load.driver.name}</span>
+        )}
+      </div>
+    </div>
   );
 }

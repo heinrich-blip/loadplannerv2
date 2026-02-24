@@ -13,6 +13,7 @@ import { useClientActiveLoads, useClientLoads } from '@/hooks/useClientLoads';
 import type { Load } from '@/hooks/useLoads';
 import { calculateDepotETA, findDepotByName, isWithinDepot, calculateDepotTripProgress, customLocationToDepot } from '@/lib/depots';
 import { useCustomLocations } from '@/hooks/useCustomLocations';
+import { parseTimeWindow, computeTimeVariance, formatTimeAsSAST } from '@/lib/timeWindow';
 import {
   authenticate,
   formatLastConnected,
@@ -24,6 +25,8 @@ import {
 import { getLocationDisplayName, cn, safeFormatDate } from '@/lib/utils';
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   Box,
   Calendar,
   CheckCircle2,
@@ -114,11 +117,37 @@ export default function ClientDeliveriesPage() {
 
   // Enrich loads with tracking data
   const loadsWithETA: LoadWithETA[] = useMemo(() => {
+    // Determine the "current" load per vehicle (in-transit first, then earliest offloading date)
+    const statusPriority: Record<string, number> = { 'in-transit': 0, 'scheduled': 1, 'pending': 2 };
+    const currentLoadPerVehicle = new Map<string, string>();
+    const vehicleGroups = new Map<string, typeof activeLoads>();
+    for (const load of activeLoads) {
+      const vid = load.fleet_vehicle?.vehicle_id;
+      if (!vid) continue;
+      if (!vehicleGroups.has(vid)) vehicleGroups.set(vid, []);
+      vehicleGroups.get(vid)!.push(load);
+    }
+    for (const [vid, vLoads] of vehicleGroups) {
+      const sorted = [...vLoads].sort((a, b) => {
+        const sp = (statusPriority[a.status] ?? 3) - (statusPriority[b.status] ?? 3);
+        if (sp !== 0) return sp;
+        const offDiff = new Date(a.offloading_date).getTime() - new Date(b.offloading_date).getTime();
+        if (offDiff !== 0) return offDiff;
+        return new Date(a.loading_date).getTime() - new Date(b.loading_date).getTime();
+      });
+      if (sorted[0]) currentLoadPerVehicle.set(vid, sorted[0].id);
+    }
+
     return activeLoads.map((load) => {
       const vehicleId = load.fleet_vehicle?.telematics_asset_id;
       const asset = vehicleId
         ? telematicsAssets.find((a) => a.id.toString() === vehicleId || a.code === vehicleId)
         : null;
+
+      // Only compute geofence position for the current load per vehicle
+      const isCurrentLoad = load.fleet_vehicle?.vehicle_id
+        ? currentLoadPerVehicle.get(load.fleet_vehicle.vehicle_id) === load.id
+        : true;
 
       let progressData = null;
       if (asset && asset.lastLatitude && asset.lastLongitude) {
@@ -128,8 +157,6 @@ export default function ClientDeliveriesPage() {
         const destDepot = findDepotByName(destName, extraDepots);
 
         if (originDepot && destDepot) {
-          // FIXED: Correct parameter order for calculateDepotTripProgress
-          // It expects (origin, destination, currentLat, currentLng)
           const tripProgress = calculateDepotTripProgress(
             originDepot,
             destDepot,
@@ -137,11 +164,9 @@ export default function ClientDeliveriesPage() {
             asset.lastLongitude
           );
           
-          // FIXED: Correct parameter order for calculateDepotETA
-          // It expects (distanceKm, speedKmH)
           const eta = calculateDepotETA(
             tripProgress.distanceRemaining,
-            asset.speedKmH || 60 // Default to 60 km/h if speed is not available
+            asset.speedKmH || 60
           );
 
           progressData = {
@@ -150,8 +175,9 @@ export default function ClientDeliveriesPage() {
             distanceRemaining: tripProgress.distanceRemaining,
             etaFormatted: eta?.etaFormatted || 'N/A',
             durationFormatted: eta?.durationFormatted || 'N/A',
-            isAtOrigin: isWithinDepot(asset.lastLatitude, asset.lastLongitude, originDepot),
-            isAtDestination: isWithinDepot(asset.lastLatitude, asset.lastLongitude, destDepot),
+            // Only report geofence arrival/departure for the current load
+            isAtOrigin: isCurrentLoad && isWithinDepot(asset.lastLatitude, asset.lastLongitude, originDepot),
+            isAtDestination: isCurrentLoad && isWithinDepot(asset.lastLatitude, asset.lastLongitude, destDepot),
           };
         }
       }
@@ -194,9 +220,9 @@ export default function ClientDeliveriesPage() {
     <TooltipProvider>
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                 <Route className="h-5 w-5 text-purple-500" />
                 Delivery Tracking
               </h2>
@@ -206,7 +232,7 @@ export default function ClientDeliveriesPage() {
             </div>
             <div className="flex items-center gap-3">
               {lastRefresh && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
                   Updated {formatLastConnected(lastRefresh.toISOString())}
                 </span>
               )}
@@ -223,7 +249,7 @@ export default function ClientDeliveriesPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">In Transit</CardTitle>
@@ -386,10 +412,10 @@ function DeliveryCard({ load }: { load: LoadWithETA }) {
 
   return (
     <Card className="border-l-4 border-l-purple-500">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
           {/* Load Info */}
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-3 min-w-0">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
                 <Package className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -404,11 +430,11 @@ function DeliveryCard({ load }: { load: LoadWithETA }) {
             </div>
 
             {/* Route */}
-            <div className="flex items-center gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{origin}</span>
-              <span className="text-muted-foreground">→</span>
-              <span className="font-medium">{destination}</span>
+            <div className="flex items-center gap-2 text-sm min-w-0">
+              <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="font-medium truncate">{origin}</span>
+              <span className="text-muted-foreground flex-shrink-0">→</span>
+              <span className="font-medium truncate">{destination}</span>
             </div>
 
             {/* Progress Bar */}
@@ -423,7 +449,7 @@ function DeliveryCard({ load }: { load: LoadWithETA }) {
             )}
 
             {/* Dates */}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
                 Loading: {safeFormatDate(load.loading_date, 'dd MMM')}
@@ -433,10 +459,57 @@ function DeliveryCard({ load }: { load: LoadWithETA }) {
                 Expected: {safeFormatDate(load.offloading_date, 'dd MMM')}
               </div>
             </div>
+
+            {/* Actual Times vs Planned */}
+            {(() => {
+              const tw = parseTimeWindow(load.time_window);
+              const hasAnyActual = load.actual_loading_arrival || load.actual_loading_departure || load.actual_offloading_arrival || load.actual_offloading_departure;
+              if (!hasAnyActual) return null;
+
+              const timePoints = [
+                { label: 'Loading Arr.', actual: load.actual_loading_arrival, planned: tw.origin.plannedArrival },
+                { label: 'Loading Dep.', actual: load.actual_loading_departure, planned: tw.origin.plannedDeparture },
+                { label: 'Offload Arr.', actual: load.actual_offloading_arrival, planned: tw.destination.plannedArrival },
+                { label: 'Offload Dep.', actual: load.actual_offloading_departure, planned: tw.destination.plannedDeparture },
+              ].filter(tp => tp.actual);
+
+              if (timePoints.length === 0) return null;
+
+              return (
+                <div className="mt-2 pt-2 border-t border-border/50">
+                  <div className="flex flex-wrap gap-3">
+                    {timePoints.map((tp) => {
+                      const v = computeTimeVariance(tp.planned, tp.actual);
+                      return (
+                        <div key={tp.label} className="flex flex-col gap-0.5">
+                          <span className="text-[10px] text-muted-foreground font-medium">{tp.label}</span>
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                            <span className="text-xs font-semibold">{formatTimeAsSAST(tp.actual)}</span>
+                          </div>
+                          {tp.planned && <span className="text-[10px] text-muted-foreground">Plan: {formatTimeAsSAST(tp.planned) || tp.planned}</span>}
+                          {v.diffMin !== null && v.diffMin !== 0 && (
+                            v.isLate ? (
+                              <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1 py-0 rounded border ${v.diffMin > 60 ? 'text-red-700 bg-red-50 border-red-200' : 'text-amber-700 bg-amber-50 border-amber-200'}`}>
+                                <ArrowUp className="w-2.5 h-2.5" />{v.label}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0 rounded">
+                                <ArrowDown className="w-2.5 h-2.5" />{v.label}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Status & ETA */}
-          <div className="text-right space-y-2">
+          <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-2 sm:text-right border-t sm:border-t-0 pt-3 sm:pt-0 flex-shrink-0">
             <div className={cn('flex items-center gap-1.5 justify-end', statusInfo.color)}>
               <StatusIcon className="h-4 w-4" />
               <span className="font-medium text-sm">{statusInfo.text}</span>
