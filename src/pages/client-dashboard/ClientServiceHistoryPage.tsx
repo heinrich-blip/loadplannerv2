@@ -14,6 +14,7 @@ import { FeedbackWidget } from '@/components/clients/FeedbackWidget';
 import { useClientLoads } from '@/hooks/useClientLoads';
 import { useClientFeedback } from '@/hooks/useClientFeedback';
 import type { Load } from '@/hooks/useLoads';
+import { parseTimeWindow, timeToSASTMinutes } from '@/lib/timeWindow';
 import { cn, getLocationDisplayName, safeFormatDate } from '@/lib/utils';
 import {
   ArrowRight,
@@ -29,14 +30,71 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { format, parseISO, isValid } from 'date-fns';
+import { endOfWeek, format, isValid, parseISO, startOfWeek } from 'date-fns';
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+  return safeFormatDate(value, 'dd MMM HH:mm', '—');
+}
+
+function getVarianceLabel(
+  actual?: string | null,
+  planned?: string | null,
+  eventType: 'loading_arrival' | 'loading_departure' | 'offloading_arrival' | 'offloading_departure' = 'loading_arrival'
+) {
+  if (!actual || !planned) return { label: '—', className: 'text-muted-foreground' };
+
+  const plannedMins = timeToSASTMinutes(planned);
+  const actualMins = timeToSASTMinutes(actual);
+  if (plannedMins === null || actualMins === null) {
+    return { label: '—', className: 'text-muted-foreground' };
+  }
+
+  const diffMins = actualMins - plannedMins;
+  const absMins = Math.abs(diffMins);
+
+  if (eventType === 'loading_arrival' || eventType === 'offloading_arrival') {
+    if (absMins <= 10) {
+      return { label: 'On time', className: 'text-success' };
+    }
+
+    if (absMins >= 60) {
+      const hours = (absMins / 60).toFixed(absMins % 60 === 0 ? 0 : 1);
+      return diffMins > 0
+        ? { label: `+${hours}h late`, className: 'text-destructive' }
+        : { label: `-${hours}h early`, className: 'text-success' };
+    }
+
+    return diffMins > 0
+      ? { label: `+${absMins}m late`, className: 'text-destructive' }
+      : { label: `-${absMins}m early`, className: 'text-success' };
+  }
+
+  if (absMins <= 10) {
+    return { label: 'On time', className: 'text-success' };
+  }
+
+  if (absMins >= 60) {
+    const hours = (absMins / 60).toFixed(absMins % 60 === 0 ? 0 : 1);
+    return {
+      label: `${diffMins > 0 ? '+' : '-'}${hours}h`,
+      className: 'text-warning',
+    };
+  }
+
+  return {
+    label: `${diffMins > 0 ? '+' : '-'}${absMins}m`,
+    className: 'text-warning',
+  };
+}
 
 export default function ClientServiceHistoryPage() {
   const { clientId } = useParams<{ clientId: string }>();
   const { data: allLoads = [], isLoading: loadsLoading } = useClientLoads(clientId);
   const { data: feedbackList = [], isLoading: feedbackLoading } = useClientFeedback(clientId);
 
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const currentWeekKey = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const [selectedWeek, setSelectedWeek] = useState<string>(currentWeekKey);
 
   // Build feedback lookup
   const feedbackByLoadId = useMemo(() => {
@@ -47,40 +105,56 @@ export default function ClientServiceHistoryPage() {
     return map;
   }, [feedbackList]);
 
-  // Generate list of months from load data
-  const availableMonths = useMemo(() => {
-    const monthSet = new Map<string, string>();
+  const getWeekLabel = (weekStart: Date) => {
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+    const weekNumber = Number(format(weekStart, 'I'));
+    const weekYear = format(weekStart, 'R');
+    return `Week ${weekNumber} (${weekYear}) · ${format(weekStart, 'dd MMM')} - ${format(weekEnd, 'dd MMM')}`;
+  };
+
+  // Generate list of historical weeks from load data (Mon-Sun) and include current week
+  const availableWeeks = useMemo(() => {
+    const weekSet = new Map<string, string>();
+
+    const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const currentKey = format(currentWeekStart, 'yyyy-MM-dd');
+    weekSet.set(currentKey, getWeekLabel(currentWeekStart));
+
     for (const load of allLoads) {
       try {
         const d = parseISO(load.offloading_date || load.loading_date);
         if (!isValid(d)) continue;
-        const key = format(d, 'yyyy-MM');
-        const label = format(d, 'MMMM yyyy');
-        monthSet.set(key, label);
+        const weekStart = startOfWeek(d, { weekStartsOn: 1 });
+        const key = format(weekStart, 'yyyy-MM-dd');
+        const label = getWeekLabel(weekStart);
+        weekSet.set(key, label);
       } catch {
         // skip invalid dates
       }
     }
-    // Sort descending (most recent first)
-    return Array.from(monthSet.entries())
+
+    return Array.from(weekSet.entries())
       .sort((a, b) => b[0].localeCompare(a[0]));
   }, [allLoads]);
 
-  // Filter loads by selected month
+  // Filter loads by selected week (Monday-Sunday)
   const filteredLoads = useMemo(() => {
-    if (selectedMonth === 'all') return allLoads;
+    if (selectedWeek === 'all') return allLoads;
+
     return allLoads.filter((load) => {
       try {
         const d = parseISO(load.offloading_date || load.loading_date);
         if (!isValid(d)) return false;
-        return format(d, 'yyyy-MM') === selectedMonth;
+        const weekStart = startOfWeek(d, { weekStartsOn: 1 });
+        const weekKey = format(weekStart, 'yyyy-MM-dd');
+        return weekKey === selectedWeek;
       } catch {
         return false;
       }
     });
-  }, [allLoads, selectedMonth]);
+  }, [allLoads, selectedWeek]);
 
-  // Calculate monthly service stats
+  // Calculate service stats
   const serviceStats = useMemo(() => {
     const total = filteredLoads.length;
     const delivered = filteredLoads.filter((l) => l.status === 'delivered').length;
@@ -103,32 +177,31 @@ export default function ClientServiceHistoryPage() {
       }
     }
 
-    // On-time delivery calculation: loads that were delivered on or before offloading_date
+    // On-time delivery calculation based on planned vs actual destination arrival times
+    // On-time rule: actual arrival within 10 minutes late of planned time (early counts as on-time)
     let onTimeCount = 0;
-    let deliveredWithDates = 0;
+    let deliveredWithTiming = 0;
+
     for (const load of filteredLoads) {
-      if (load.status === 'delivered') {
-        if (load.actual_offloading_arrival && load.offloading_date) {
-          deliveredWithDates++;
-          try {
-            const actualDate = parseISO(load.actual_offloading_arrival);
-            const plannedDate = parseISO(load.offloading_date);
-            // Consider on-time if arrived within the same day or earlier
-            const actualDay = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
-            const plannedDay = new Date(plannedDate.getFullYear(), plannedDate.getMonth(), plannedDate.getDate());
-            if (actualDay <= plannedDay) onTimeCount++;
-          } catch {
-            // skip
-          }
-        }
-      }
+      if (load.status !== 'delivered') continue;
+
+      const plannedArrival = parseTimeWindow(load.time_window).destination.plannedArrival;
+      const actualArrival = load.actual_offloading_arrival;
+      const plannedMins = timeToSASTMinutes(plannedArrival);
+      const actualMins = timeToSASTMinutes(actualArrival);
+
+      if (plannedMins === null || actualMins === null) continue;
+
+      deliveredWithTiming++;
+      const diffMins = actualMins - plannedMins;
+      if (diffMins <= 10) onTimeCount++;
     }
 
     const deliveryRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
     const satisfactionRate =
       feedbackCount > 0 ? Math.round((happyCount / feedbackCount) * 100) : null;
     const onTimeRate =
-      deliveredWithDates > 0 ? Math.round((onTimeCount / deliveredWithDates) * 100) : null;
+      deliveredWithTiming > 0 ? Math.round((onTimeCount / deliveredWithTiming) * 100) : null;
 
     return {
       total,
@@ -142,7 +215,7 @@ export default function ClientServiceHistoryPage() {
       satisfactionRate,
       onTimeRate,
       onTimeCount,
-      deliveredWithDates,
+      deliveredWithTiming,
     };
   }, [filteredLoads, feedbackByLoadId]);
 
@@ -158,24 +231,24 @@ export default function ClientServiceHistoryPage() {
   }, [filteredLoads]);
 
   const isLoading = loadsLoading || feedbackLoading;
-  const monthLabel =
-    selectedMonth === 'all'
+  const weekLabel =
+    selectedWeek === 'all'
       ? 'All Time'
-      : availableMonths.find(([k]) => k === selectedMonth)?.[1] || selectedMonth;
+      : availableWeeks.find(([k]) => k === selectedWeek)?.[1] || selectedWeek;
 
   return (
     <div className="space-y-6">
-      {/* Month selector */}
+      {/* Week selector */}
       <div className="flex justify-end">
         <div className="flex items-center gap-2 bg-card border border-subtle rounded-lg px-3 py-2 shadow-sm w-full sm:w-auto">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <Select value={selectedWeek} onValueChange={setSelectedWeek}>
             <SelectTrigger className="w-full sm:w-[200px] border-subtle">
-              <SelectValue placeholder="Select month" />
+              <SelectValue placeholder="Select week" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Time</SelectItem>
-              {availableMonths.map(([key, label]) => (
+              {availableWeeks.map(([key, label]) => (
                 <SelectItem key={key} value={key}>
                   {label}
                 </SelectItem>
@@ -232,8 +305,8 @@ export default function ClientServiceHistoryPage() {
           icon={TrendingUp}
           color="amber"
           subtitle={
-            serviceStats.deliveredWithDates > 0
-              ? `${serviceStats.onTimeCount}/${serviceStats.deliveredWithDates} on time`
+            serviceStats.deliveredWithTiming > 0
+              ? `${serviceStats.onTimeCount}/${serviceStats.deliveredWithTiming} on time`
               : 'No data yet'
           }
           loading={isLoading}
@@ -246,7 +319,7 @@ export default function ClientServiceHistoryPage() {
           <CardHeader className="pb-3 border-b border-subtle bg-card/70">
             <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2">
               <ThumbsUp className="h-4 w-4 text-primary" />
-              Customer Satisfaction — {monthLabel}
+              Customer Satisfaction — {weekLabel}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -300,7 +373,7 @@ export default function ClientServiceHistoryPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              Delivered — {monthLabel}
+              Delivered — {weekLabel}
             </CardTitle>
             <Badge variant="secondary" className="text-xs">
               {deliveredLoads.length} deliveries
@@ -319,9 +392,9 @@ export default function ClientServiceHistoryPage() {
               <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm font-medium">No deliveries found</p>
               <p className="text-xs mt-1">
-                {selectedMonth === 'all'
+                {selectedWeek === 'all'
                   ? 'No completed deliveries yet'
-                  : `No deliveries for ${monthLabel}`}
+                  : `No deliveries for ${weekLabel}`}
               </p>
             </div>
           ) : (
@@ -356,11 +429,34 @@ function PastDeliveryRow({
 }) {
   const origin = getLocationDisplayName(load.origin);
   const destination = getLocationDisplayName(load.destination);
+  const timeWindow = parseTimeWindow(load.time_window);
+
+  const loadingArrivalVariance = getVarianceLabel(
+    load.actual_loading_arrival,
+    timeWindow.origin.plannedArrival,
+    'loading_arrival'
+  );
+  const loadingDepartureVariance = getVarianceLabel(
+    load.actual_loading_departure,
+    timeWindow.origin.plannedDeparture,
+    'loading_departure'
+  );
+  const offloadingArrivalVariance = getVarianceLabel(
+    load.actual_offloading_arrival,
+    timeWindow.destination.plannedArrival,
+    'offloading_arrival'
+  );
+  const offloadingDepartureVariance = getVarianceLabel(
+    load.actual_offloading_departure,
+    timeWindow.destination.plannedDeparture,
+    'offloading_departure'
+  );
 
   return (
     <div className="px-4 py-3.5 hover:bg-subtle/70 transition-colors">
       {/* Desktop */}
-      <div className="hidden md:flex items-center gap-4">
+      <div className="hidden md:block space-y-3">
+        <div className="flex items-center gap-4">
         <div className="w-24 flex-shrink-0">
           <p className="font-mono text-sm font-semibold">{load.load_id}</p>
           {load.fleet_vehicle && (
@@ -397,6 +493,40 @@ function PastDeliveryRow({
         <div className="w-36 flex-shrink-0">
           <FeedbackWidget loadId={load.id} clientId={clientId} existingFeedback={feedback} />
         </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border/40">
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Loading</p>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div>
+                <p className="text-muted-foreground">Arrival</p>
+                <p className="font-medium">{formatDateTime(load.actual_loading_arrival)}</p>
+                <p className={cn('font-semibold', loadingArrivalVariance.className)}>{loadingArrivalVariance.label}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Departure</p>
+                <p className="font-medium">{formatDateTime(load.actual_loading_departure)}</p>
+                <p className={cn('font-semibold', loadingDepartureVariance.className)}>{loadingDepartureVariance.label}</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Offloading</p>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div>
+                <p className="text-muted-foreground">Arrival</p>
+                <p className="font-medium">{formatDateTime(load.actual_offloading_arrival)}</p>
+                <p className={cn('font-semibold', offloadingArrivalVariance.className)}>{offloadingArrivalVariance.label}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Departure</p>
+                <p className="font-medium">{formatDateTime(load.actual_offloading_departure)}</p>
+                <p className={cn('font-semibold', offloadingDepartureVariance.className)}>{offloadingDepartureVariance.label}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Mobile */}
@@ -425,6 +555,29 @@ function PastDeliveryRow({
         </div>
         <div className="pt-1">
           <FeedbackWidget loadId={load.id} clientId={clientId} existingFeedback={feedback} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40 text-[11px]">
+          <div className="space-y-1">
+            <p className="font-semibold text-muted-foreground">Load Arr</p>
+            <p>{formatDateTime(load.actual_loading_arrival)}</p>
+            <p className={cn('font-semibold', loadingArrivalVariance.className)}>{loadingArrivalVariance.label}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="font-semibold text-muted-foreground">Load Dep</p>
+            <p>{formatDateTime(load.actual_loading_departure)}</p>
+            <p className={cn('font-semibold', loadingDepartureVariance.className)}>{loadingDepartureVariance.label}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="font-semibold text-muted-foreground">Off Arr</p>
+            <p>{formatDateTime(load.actual_offloading_arrival)}</p>
+            <p className={cn('font-semibold', offloadingArrivalVariance.className)}>{offloadingArrivalVariance.label}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="font-semibold text-muted-foreground">Off Dep</p>
+            <p>{formatDateTime(load.actual_offloading_departure)}</p>
+            <p className={cn('font-semibold', offloadingDepartureVariance.className)}>{offloadingDepartureVariance.label}</p>
+          </div>
         </div>
       </div>
     </div>

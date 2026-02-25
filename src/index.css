@@ -28,6 +28,14 @@
     
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
+
+    /* Semantic utility colors */
+    --success: 152 46% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 35 84% 48%;
+    --warning-foreground: 0 0% 100%;
+    --info: 205 82% 46%;
+    --info-foreground: 0 0% 100%;
     
     --border: 214 32% 91%;
     --input: 214 32% 91%;
@@ -36,16 +44,16 @@
     --radius: 0.75rem;
     
     /* Sophisticated Status Colors - Muted, Professional */
-    --status-scheduled: 210 40% 45%;    /* Slate blue */
-    --status-in-transit: 28 80% 52%;    /* Warm amber */
-    --status-pending: 48 96% 45%;       /* Muted gold */
-    --status-delivered: 158 42% 45%;    /* Sage green */
+    --status-scheduled: 214 28% 48%;    /* Soft slate blue */
+    --status-in-transit: 30 68% 52%;    /* Soft amber */
+    --status-pending: 45 72% 50%;       /* Soft gold */
+    --status-delivered: 152 40% 44%;    /* Soft green */
     
     /* Subtle Backgrounds */
-    --status-scheduled-bg: 210 40% 96%;
-    --status-in-transit-bg: 28 80% 96%;
-    --status-pending-bg: 48 96% 96%;
-    --status-delivered-bg: 158 42% 96%;
+    --status-scheduled-bg: 214 40% 97%;
+    --status-in-transit-bg: 30 80% 96.5%;
+    --status-pending-bg: 45 80% 96.5%;
+    --status-delivered-bg: 152 45% 96.5%;
     
     /* Cargo Type Colors - Refined */
     --cargo-bv: 262 70% 55%;           /* Softer purple */
@@ -112,15 +120,23 @@
     --accent-foreground: 222 47% 11%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
+
+    /* Semantic utility colors (dark mode) */
+    --success: 152 50% 64%;
+    --success-foreground: 152 36% 14%;
+    --warning: 36 92% 66%;
+    --warning-foreground: 32 50% 16%;
+    --info: 203 90% 70%;
+    --info-foreground: 210 45% 15%;
     --border: 222 47% 15%;
     --input: 222 47% 15%;
     --ring: 199 89% 48%;
     
     /* Dark mode status colors - Softer */
-    --status-scheduled: 210 60% 70%;
-    --status-in-transit: 28 70% 65%;
-    --status-pending: 48 70% 60%;
-    --status-delivered: 158 50% 60%;
+    --status-scheduled: 214 56% 72%;
+    --status-in-transit: 32 74% 70%;
+    --status-pending: 45 72% 66%;
+    --status-delivered: 152 50% 66%;
     --status-scheduled-bg: 210 40% 12%;
     --status-in-transit-bg: 28 40% 12%;
     --status-pending-bg: 48 40% 12%;
@@ -156,6 +172,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 450;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -164,7 +181,7 @@
   
   /* Fluid & Balanced Typography */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-medium tracking-tight text-foreground;
+    @apply font-semibold tracking-tight text-foreground;
     text-wrap: balance; /* Prevents typographic orphans on headings */
   }
   
@@ -203,7 +220,7 @@
 @layer components {
   /* Status Badges - Clean, Typography-focused */
   .status-badge {
-    @apply inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full font-semibold whitespace-nowrap border border-transparent transition-colors;
+    @apply inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full font-bold whitespace-nowrap border border-transparent transition-colors;
     letter-spacing: 0.025em;
     text-transform: uppercase;
     font-size: 0.6875rem;
@@ -314,6 +331,19 @@
   
   .data-table tr:hover td {
     @apply bg-muted/20;
+  }
+
+  /* Client dashboard readability: slightly bolder small/body text */
+  .client-dashboard-scope {
+    font-weight: 500;
+  }
+
+  .client-dashboard-scope :where(.text-xs, .text-sm) {
+    font-weight: 500;
+  }
+
+  .client-dashboard-scope :where(.font-medium) {
+    font-weight: 600;
   }
 }
 

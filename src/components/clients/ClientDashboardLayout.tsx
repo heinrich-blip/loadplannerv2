@@ -28,7 +28,7 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
   const basePath = location.pathname.startsWith('/portal') ? '/portal' : '/customers';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="client-dashboard-scope min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-subtle bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
         <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
