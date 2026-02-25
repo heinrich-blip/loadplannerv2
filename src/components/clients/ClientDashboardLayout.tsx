@@ -6,6 +6,9 @@ import { useClient } from '@/hooks/useClientLoads';
 import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 import { NavLink, useParams, useLocation } from 'react-router-dom';
+import { ClientPWARegistration } from './ClientPWARegistration';
+import { PWAInstallButton } from './PWAInstallButton';
+import { PWAInstallPrompt } from './PWAInstallPrompt';
 
 interface ClientDashboardLayoutProps {
   children: ReactNode;
@@ -27,8 +30,14 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
   // Determine base path - use /portal for public access, /customers for admin access
   const basePath = location.pathname.startsWith('/portal') ? '/portal' : '/customers';
 
+  // Only register PWA on the public portal route
+  const isPortal = location.pathname.startsWith('/portal');
+
   return (
     <div className="client-dashboard-scope min-h-screen bg-background flex flex-col">
+      {/* PWA registration — portal only */}
+      {isPortal && <ClientPWARegistration />}
+
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-subtle bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
         <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
@@ -50,17 +59,20 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
               )}
             </div>
 
-            {/* Contact info */}
-            {client && (
-              <div className="hidden lg:flex items-center gap-4 text-sm text-muted-foreground">
-                {client.contact_person && (
-                  <span>{client.contact_person}</span>
-                )}
-                {client.contact_email && (
-                  <span>{client.contact_email}</span>
-                )}
-              </div>
-            )}
+            {/* Install button + Contact info */}
+            <div className="flex items-center gap-3">
+              {isPortal && <PWAInstallButton />}
+              {client && (
+                <div className="hidden lg:flex items-center gap-4 text-sm text-muted-foreground">
+                  {client.contact_person && (
+                    <span>{client.contact_person}</span>
+                  )}
+                  {client.contact_email && (
+                    <span>{client.contact_email}</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Navigation — horizontally scrollable on mobile */}
@@ -98,6 +110,9 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
           <p>Powered by LoadPlan Fleet Management</p>
         </div>
       </footer>
+
+      {/* PWA install banner — portal only */}
+      {isPortal && <PWAInstallPrompt />}
     </div>
   );
 }
