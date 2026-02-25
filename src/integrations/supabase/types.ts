@@ -65,6 +65,51 @@ export interface Database {
         }
         Relationships: []
       }
+      client_feedback: {
+        Row: {
+          id: string
+          load_id: string
+          client_id: string
+          rating: string
+          comment: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          load_id: string
+          client_id: string
+          rating: string
+          comment?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          load_id?: string
+          client_id?: string
+          rating?: string
+          comment?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_feedback_load_id_fkey"
+            columns: ["load_id"]
+            isOneToOne: false
+            referencedRelation: "loads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_feedback_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_locations: {
         Row: {
           country: string | null

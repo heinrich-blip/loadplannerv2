@@ -47,6 +47,7 @@ interface BackloadAnalyticsTabProps {
   backloadStatusDistribution: BackloadDistribution[];
   backloadDestinationDistribution: BackloadDestinationData[];
   backloadWeeklyTrend: BackloadWeeklyTrend[];
+  trendLabel?: "Weekly" | "Monthly";
   backloadRouteAnalysis: BackloadRouteAnalysisItem[];
   backloadCargoTypeDistribution: BackloadCargoTypeData[];
 }
@@ -58,6 +59,7 @@ export function BackloadAnalyticsTab({
   backloadStatusDistribution,
   backloadDestinationDistribution,
   backloadWeeklyTrend,
+  trendLabel = "Weekly",
   backloadRouteAnalysis,
   backloadCargoTypeDistribution,
 }: BackloadAnalyticsTabProps) {
@@ -388,15 +390,15 @@ export function BackloadAnalyticsTab({
             </CardContent>
           </Card>
 
-          {/* Backload Weekly Trend */}
+          {/* Backload Period Trend */}
           <Card className="overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-emerald-500" />
-                Weekly Packaging Movement Trends
+                {trendLabel} Packaging Movement Trends
               </CardTitle>
               <CardDescription>
-                Backload packaging quantities over time
+                Backload packaging quantities over time ({trendLabel.toLowerCase()})
               </CardDescription>
             </CardHeader>
             <CardContent>

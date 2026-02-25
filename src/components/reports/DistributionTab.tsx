@@ -34,6 +34,7 @@ interface DistributionTabProps {
   statusDistribution: StatusDistribution[];
   topRoutes: RouteData[];
   weeklyTrend: WeeklyTrend[];
+  trendLabel?: "Weekly" | "Monthly";
 }
 
 export function DistributionTab({
@@ -41,6 +42,7 @@ export function DistributionTab({
   statusDistribution,
   topRoutes,
   weeklyTrend,
+  trendLabel = "Weekly",
 }: DistributionTabProps) {
   return (
     <TabsContent value="distribution" className="space-y-6">
@@ -195,14 +197,14 @@ export function DistributionTab({
         </CardContent>
       </Card>
 
-      {/* Weekly Trend */}
+      {/* Period Trend */}
       <Card className="overflow-hidden">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-semibold">
-            Weekly Load Trends
+            {trendLabel} Load Trends
           </CardTitle>
           <CardDescription>
-            Load volumes and status breakdown over time
+            Load volumes and status breakdown over time ({trendLabel.toLowerCase()})
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -25,13 +25,16 @@ import {
   Truck,
 } from 'lucide-react';
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 
 export default function ClientOverviewPage() {
   const { clientId } = useParams<{ clientId: string }>();
+  const location = useLocation();
   const { data: client, isLoading: clientLoading } = useClient(clientId);
   const { data: allLoads = [], isLoading: loadsLoading } = useClientLoads(clientId);
   const { data: activeLoads = [] } = useClientActiveLoads(clientId);
+
+  const basePath = location.pathname.startsWith('/portal') ? '/portal' : '/customers';
 
   const isLoading = clientLoading || loadsLoading;
 
@@ -89,19 +92,21 @@ export default function ClientOverviewPage() {
         {isLoading ? (
           <Skeleton className="h-20" />
         ) : (
-          <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-white dark:from-purple-950/20 dark:to-background">
+          <Card className="border-subtle shadow-sm bg-card">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">
+                  <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">
                     Welcome back{client?.contact_person ? `, ${client.contact_person.split(' ')[0]}` : ''}!
                   </h2>
-                  <p className="text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground mt-1.5">
                     Here's an overview of your shipment activity with {client?.name || 'your account'}
                   </p>
                 </div>
                 <div className="hidden md:block">
-                  <Package className="h-16 w-16 text-purple-200" />
+                  <div className="rounded-2xl bg-subtle border border-subtle p-4">
+                    <Package className="h-10 w-10 text-primary/70" />
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -109,7 +114,7 @@ export default function ClientOverviewPage() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="stats-grid">
           <StatsCard
             title="Total Shipments"
             value={stats.total}
@@ -143,17 +148,17 @@ export default function ClientOverviewPage() {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Active Deliveries */}
-          <Card>
-            <CardHeader>
+          <Card className="border-subtle shadow-sm">
+            <CardHeader className="border-b border-subtle bg-card/70">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Navigation className="h-5 w-5 text-blue-500" />
+                  <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2">
+                    <Navigation className="h-5 w-5 text-primary" />
                     Active Deliveries
                   </CardTitle>
                   <CardDescription>Shipments currently in progress</CardDescription>
                 </div>
-                <Link to={`/customers/${clientId}/deliveries`}>
+                <Link to={`${basePath}/${clientId}/deliveries`}>
                   <Badge variant="outline" className="cursor-pointer hover:bg-accent">
                     View All
                     <ArrowRight className="h-3 w-3 ml-1" />
@@ -184,17 +189,17 @@ export default function ClientOverviewPage() {
           </Card>
 
           {/* Upcoming Scheduled */}
-          <Card>
-            <CardHeader>
+          <Card className="border-subtle shadow-sm">
+            <CardHeader className="border-b border-subtle bg-card/70">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-amber-500" />
+                  <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" />
                     Upcoming Shipments
                   </CardTitle>
                   <CardDescription>Next scheduled deliveries</CardDescription>
                 </div>
-                <Link to={`/customers/${clientId}/loads`}>
+                <Link to={`${basePath}/${clientId}/loads`}>
                   <Badge variant="outline" className="cursor-pointer hover:bg-accent">
                     View All
                     <ArrowRight className="h-3 w-3 ml-1" />
@@ -228,10 +233,10 @@ export default function ClientOverviewPage() {
         {/* Performance & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Delivery Performance */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-500" />
+          <Card className="border-subtle shadow-sm">
+            <CardHeader className="border-b border-subtle bg-card/70">
+              <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
                 Delivery Performance
               </CardTitle>
             </CardHeader>
@@ -241,7 +246,7 @@ export default function ClientOverviewPage() {
               ) : (
                 <>
                   <div className="text-center">
-                    <div className="text-4xl font-bold text-green-600">{deliveryRate}%</div>
+                    <div className="text-4xl font-semibold tracking-tight text-emerald-600">{deliveryRate}%</div>
                     <p className="text-sm text-muted-foreground mt-1">Completion Rate</p>
                   </div>
                   <div className="space-y-3">
@@ -272,10 +277,10 @@ export default function ClientOverviewPage() {
           </Card>
 
           {/* Recent Activity */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-muted-foreground" />
+          <Card className="lg:col-span-2 border-subtle shadow-sm">
+            <CardHeader className="border-b border-subtle bg-card/70">
+              <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
                 Recent Activity
               </CardTitle>
               <CardDescription>Latest updates on your shipments</CardDescription>
@@ -320,10 +325,10 @@ function StatsCard({
   loading?: boolean;
 }) {
   const colorClasses = {
-    purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
-    amber: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+    purple: 'bg-subtle text-foreground border border-subtle',
+    blue: 'bg-subtle text-primary border border-subtle',
+    green: 'bg-subtle text-emerald-700 dark:text-emerald-400 border border-subtle',
+    amber: 'bg-subtle text-amber-700 dark:text-amber-400 border border-subtle',
   };
 
   if (loading) {
@@ -337,15 +342,15 @@ function StatsCard({
   }
 
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Card className="kpi-card">
+      <CardContent className="p-0">
         <div className="flex items-center gap-3">
           <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', colorClasses[color])}>
             <Icon className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{value}</p>
-            <p className="text-xs text-muted-foreground">{title}</p>
+            <p className="text-2xl font-semibold tracking-tight">{value}</p>
+            <p className="text-xs text-muted-foreground font-medium">{title}</p>
           </div>
         </div>
       </CardContent>
@@ -358,13 +363,13 @@ function ActiveLoadItem({ load }: { load: Load }) {
   const destination = getLocationDisplayName(load.destination);
 
   return (
-    <div className="py-3 flex items-center justify-between">
+    <div className="py-3.5 flex items-center justify-between hover:bg-subtle/70 px-1.5 rounded-lg transition-colors">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-          <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-subtle border border-subtle">
+          <Truck className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <p className="font-medium text-sm">{load.load_id}</p>
+          <p className="font-semibold text-sm">{load.load_id}</p>
           <p className="text-xs text-muted-foreground">
             {origin} → {destination}
           </p>
@@ -380,13 +385,13 @@ function UpcomingLoadItem({ load }: { load: Load }) {
   const destination = getLocationDisplayName(load.destination);
 
   return (
-    <div className="py-3 flex items-center justify-between">
+    <div className="py-3.5 flex items-center justify-between hover:bg-subtle/70 px-1.5 rounded-lg transition-colors">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-          <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-subtle border border-subtle">
+          <Calendar className="h-4 w-4 text-amber-700 dark:text-amber-400" />
         </div>
         <div>
-          <p className="font-medium text-sm">{load.load_id}</p>
+          <p className="font-semibold text-sm">{load.load_id}</p>
           <p className="text-xs text-muted-foreground">
             {origin} → {destination}
           </p>
@@ -417,7 +422,7 @@ function RecentActivityItem({ load }: { load: Load }) {
   };
 
   return (
-    <div className="py-2.5 flex items-center justify-between">
+    <div className="py-3 flex items-center justify-between hover:bg-subtle/70 px-1.5 rounded-lg transition-colors">
       <div className="flex items-center gap-3">
         {getStatusIcon()}
         <div>

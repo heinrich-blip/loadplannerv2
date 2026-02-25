@@ -117,59 +117,48 @@ export default function ClientLoadsPage() {
 
   return (
     <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Package className="h-5 w-5 text-purple-500" />
-            Your Loads
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            View and track all your shipments
-          </p>
-        </div>
-
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-          <Card>
-            <CardHeader className="pb-2">
+        <div className="stats-grid">
+          <Card className="kpi-card">
+            <CardHeader className="pb-2 p-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Loads</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center gap-2">
-                <Package className="h-5 w-5 text-purple-500" />
+            <CardContent className="p-0 pt-1">
+              <div className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
                 {stats.total}
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="kpi-card">
+            <CardHeader className="pb-2 p-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center gap-2">
-                <Clock className="h-5 w-5 text-amber-500" />
+            <CardContent className="p-0 pt-1">
+              <div className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+                <Clock className="h-5 w-5 text-amber-700 dark:text-amber-400" />
                 {stats.scheduled}
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="kpi-card">
+            <CardHeader className="pb-2 p-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">In Transit</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center gap-2">
-                <Truck className="h-5 w-5 text-blue-500" />
+            <CardContent className="p-0 pt-1">
+              <div className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
                 {stats.inTransit}
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="kpi-card">
+            <CardHeader className="pb-2 p-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">Delivered</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <CardContent className="p-0 pt-1">
+              <div className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
                 {stats.delivered}
               </div>
             </CardContent>
@@ -177,12 +166,12 @@ export default function ClientLoadsPage() {
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardHeader>
+        <Card className="border-subtle shadow-sm">
+          <CardHeader className="border-b border-subtle bg-card/70">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
+                <CardTitle className="text-sm sm:text-base font-semibold tracking-tight flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-primary" />
                   Filter Loads
                 </CardTitle>
                 <CardDescription>Search and filter your shipments</CardDescription>
@@ -202,7 +191,7 @@ export default function ClientLoadsPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by load ID, origin, destination..."
-                    className="pl-9"
+                    className="pl-9 border-subtle"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -212,7 +201,7 @@ export default function ClientLoadsPage() {
                 value={statusFilter}
                 onValueChange={(value) => setStatusFilter(value as StatusFilter)}
               >
-                <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px] border-subtle">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -227,7 +216,7 @@ export default function ClientLoadsPage() {
                 value={dateFilter}
                 onValueChange={(value) => setDateFilter(value as typeof dateFilter)}
               >
-                <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px] border-subtle">
                   <SelectValue placeholder="Date Range" />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,9 +231,9 @@ export default function ClientLoadsPage() {
         </Card>
 
         {/* Loads Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
+        <Card className="border-subtle shadow-sm">
+          <CardHeader className="border-b border-subtle bg-card/70">
+            <CardTitle className="text-sm sm:text-base font-semibold tracking-tight">
               {filteredLoads.length} {filteredLoads.length === 1 ? 'Load' : 'Loads'}
               {hasActiveFilters && ' (filtered)'}
             </CardTitle>
@@ -277,7 +266,7 @@ export default function ClientLoadsPage() {
             ) : (
               <>
                 {/* Desktop Table */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto rounded-lg border border-subtle">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -319,8 +308,8 @@ function LoadRow({ load }: { load: Load }) {
     <TableRow>
       <TableCell>
         <div className="flex items-center gap-2">
-          <Package className="h-4 w-4 text-purple-500" />
-          <span className="font-medium">{load.load_id}</span>
+          <Package className="h-4 w-4 text-primary" />
+          <span className="font-semibold">{load.load_id}</span>
         </div>
       </TableCell>
       <TableCell>
@@ -371,11 +360,11 @@ function MobileLoadCard({ load }: { load: Load }) {
   const destination = getLocationDisplayName(load.destination);
 
   return (
-    <div className="border rounded-lg p-3 space-y-2">
+    <div className="border border-subtle bg-card rounded-xl p-3.5 space-y-2.5 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Package className="h-4 w-4 text-purple-500" />
-          <span className="font-medium text-sm">{load.load_id}</span>
+          <Package className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-sm">{load.load_id}</span>
         </div>
         <StatusBadge status={load.status} />
       </div>

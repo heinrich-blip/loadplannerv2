@@ -32,6 +32,7 @@ import { exportVarianceToExcel } from "@/lib/exportVarianceToExcel";
 import { DistributionTab } from "@/components/reports/DistributionTab";
 import { TimeAnalysisTab } from "@/components/reports/TimeAnalysisTab";
 import { BackloadAnalyticsTab } from "@/components/reports/BackloadAnalyticsTab";
+import { ClientFeedbackTab } from "@/components/reports/ClientFeedbackTab";
 import type {
   CargoDistribution,
   StatusDistribution,
@@ -72,6 +73,7 @@ import
     Download,
     FileText,
     Map as MapIcon,
+    MessageSquare,
     Package,
     PieChart as PieChartIcon,
     TrendingUp,
@@ -161,6 +163,7 @@ export default function ReportsPage() {
   const [timeRange, setTimeRange] = useState<
     "3months" | "6months" | "12months"
   >("3months");
+  const [granularity, setGranularity] = useState<"weekly" | "monthly">("weekly");
 
   const filteredLoads = useMemo(() => {
     const now = new Date();
@@ -270,6 +273,103 @@ export default function ReportsPage() {
     }
 
     return Array.from(byWeekStartISO.entries()).map(([_, v]) => ({
+      week: v.label,
+      loads: v.loads,
+      originArrivalAvg: v.sums.oaN ? Math.round(v.sums.oa / v.sums.oaN) : null,
+      originDepartureAvg: v.sums.odN ? Math.round(v.sums.od / v.sums.odN) : null,
+      destArrivalAvg: v.sums.daN ? Math.round(v.sums.da / v.sums.daN) : null,
+      destDepartureAvg: v.sums.ddN ? Math.round(v.sums.dd / v.sums.ddN) : null,
+      originDelayCount: v.originDelayCount,
+      destDelayCount: v.destDelayCount,
+    }));
+  }, [filteredLoads, timeRange]);
+
+  // Monthly punctuality (grouped by calendar month)
+  const monthlyPunctuality = useMemo<WeeklyPunctualityRow[]>(() => {
+    const now = new Date();
+    const monthsToSubtract =
+      timeRange === "3months" ? 3 : timeRange === "6months" ? 6 : 12;
+    const byMonth = new Map<
+      string,
+      {
+        label: string;
+        loads: number;
+        sums: {
+          oa: number;
+          oaN: number;
+          od: number;
+          odN: number;
+          da: number;
+          daN: number;
+          dd: number;
+          ddN: number;
+        };
+        originDelayCount: number;
+        destDelayCount: number;
+      }
+    >();
+
+    for (let i = monthsToSubtract - 1; i >= 0; i--) {
+      const monthDate = subMonths(now, i);
+      const key = format(monthDate, "yyyy-MM");
+      byMonth.set(key, {
+        label: format(monthDate, "MMM yy"),
+        loads: 0,
+        sums: { oa: 0, oaN: 0, od: 0, odN: 0, da: 0, daN: 0, dd: 0, ddN: 0 },
+        originDelayCount: 0,
+        destDelayCount: 0,
+      });
+    }
+
+    for (const load of filteredLoads) {
+      const loadDate = parseISO(load.loading_date);
+      const key = format(loadDate, "yyyy-MM");
+      if (!byMonth.has(key)) continue;
+      const times = timeWindowLib.parseTimeWindow(load.time_window);
+      if (!times) continue;
+
+      const oa = calculateVarianceMinutes(
+        times.origin.plannedArrival,
+        times.origin.actualArrival,
+      );
+      const od = calculateVarianceMinutes(
+        times.origin.plannedDeparture,
+        times.origin.actualDeparture,
+      );
+      const da = calculateVarianceMinutes(
+        times.destination.plannedArrival,
+        times.destination.actualArrival,
+      );
+      const dd = calculateVarianceMinutes(
+        times.destination.plannedDeparture,
+        times.destination.actualDeparture,
+      );
+
+      const agg = byMonth.get(key)!;
+      agg.loads += 1;
+      if (oa !== null) {
+        agg.sums.oa += oa;
+        agg.sums.oaN += 1;
+        if (oa > 15) agg.originDelayCount += 1;
+      }
+      if (od !== null) {
+        agg.sums.od += od;
+        agg.sums.odN += 1;
+        if (od > 15) agg.originDelayCount += 1;
+      }
+      if (da !== null) {
+        agg.sums.da += da;
+        agg.sums.daN += 1;
+        if (da > 15) agg.destDelayCount += 1;
+      }
+      if (dd !== null) {
+        agg.sums.dd += dd;
+        agg.sums.ddN += 1;
+        if (dd > 15) agg.destDelayCount += 1;
+      }
+    }
+
+    return Array.from(byMonth.values()).map((v) => ({
       week: v.label,
       loads: v.loads,
       originArrivalAvg: v.sums.oaN ? Math.round(v.sums.oa / v.sums.oaN) : null,
@@ -401,6 +501,36 @@ export default function ReportsPage() {
         total: weekLoads.length,
       };
     });
+  }, [filteredLoads, timeRange]);
+
+  // Monthly trend data with status breakdown (reuses WeeklyTrend shape for chart compatibility)
+  const monthlyStatusTrend = useMemo<WeeklyTrend[]>(() => {
+    const now = new Date();
+    const monthsToSubtract =
+      timeRange === "3months" ? 3 : timeRange === "6months" ? 6 : 12;
+    const months = [] as WeeklyTrend[];
+
+    for (let i = monthsToSubtract - 1; i >= 0; i--) {
+      const monthDate = subMonths(now, i);
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
+
+      const monthLoads = filteredLoads.filter((load) => {
+        const loadDate = parseISO(load.loading_date);
+        return loadDate >= monthStart && loadDate <= monthEnd;
+      });
+
+      months.push({
+        week: format(monthDate, "MMM yy"),
+        scheduled: monthLoads.filter((l) => l.status === "scheduled").length,
+        inTransit: monthLoads.filter((l) => l.status === "in-transit").length,
+        delivered: monthLoads.filter((l) => l.status === "delivered").length,
+        pending: monthLoads.filter((l) => l.status === "pending").length,
+        total: monthLoads.length,
+      });
+    }
+
+    return months;
   }, [filteredLoads, timeRange]);
 
   // Time window analysis - categorized for better readability
@@ -782,6 +912,34 @@ export default function ReportsPage() {
     });
   }, [backloadMovements, timeRange]);
 
+  const backloadMonthlyTrend = useMemo<BackloadWeeklyTrend[]>(() => {
+    const now = new Date();
+    const monthsToSubtract =
+      timeRange === "3months" ? 3 : timeRange === "6months" ? 6 : 12;
+    const months = [] as BackloadWeeklyTrend[];
+
+    for (let i = monthsToSubtract - 1; i >= 0; i--) {
+      const monthDate = subMonths(now, i);
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
+
+      const monthMovements = backloadMovements.filter((movement) => {
+        const moveDate = parseISO(movement.offloadingDate);
+        return moveDate >= monthStart && moveDate <= monthEnd;
+      });
+
+      months.push({
+        week: format(monthDate, "MMM yy"),
+        movements: monthMovements.length,
+        bins: monthMovements.reduce((sum, m) => sum + m.quantities.bins, 0),
+        crates: monthMovements.reduce((sum, m) => sum + m.quantities.crates, 0),
+        pallets: monthMovements.reduce((sum, m) => sum + m.quantities.pallets, 0),
+      });
+    }
+
+    return months;
+  }, [backloadMovements, timeRange]);
+
   // Backload status distribution
   const backloadStatusDistribution = useMemo<BackloadDistribution[]>(() => {
     const distribution: Record<string, number> = {};
@@ -918,6 +1076,25 @@ export default function ReportsPage() {
                 <SelectItem value="12months">Last 12 Months</SelectItem>
               </SelectContent>
             </Select>
+
+            <div className="inline-flex items-center rounded-lg border border-border/60 bg-background/80 p-1 backdrop-blur-sm">
+              <Button
+                size="sm"
+                variant={granularity === "weekly" ? "default" : "ghost"}
+                className="h-8 px-3"
+                onClick={() => setGranularity("weekly")}
+              >
+                Week
+              </Button>
+              <Button
+                size="sm"
+                variant={granularity === "monthly" ? "default" : "ghost"}
+                className="h-8 px-3"
+                onClick={() => setGranularity("monthly")}
+              >
+                Month
+              </Button>
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1064,13 +1241,21 @@ export default function ReportsPage() {
               <Package className="h-4 w-4" />
               Backload Packaging
             </TabsTrigger>
+            <TabsTrigger
+              value="feedback"
+              className="data-[state=active]:bg-background gap-2"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Client Feedback
+            </TabsTrigger>
           </TabsList>
 
           <DistributionTab
             cargoDistribution={cargoDistribution}
             statusDistribution={statusDistribution}
             topRoutes={topRoutes}
-            weeklyTrend={weeklyTrend}
+            weeklyTrend={granularity === "weekly" ? weeklyTrend : monthlyStatusTrend}
+            trendLabel={granularity === "weekly" ? "Weekly" : "Monthly"}
           />
 
           <TimeAnalysisTab
@@ -1078,6 +1263,10 @@ export default function ReportsPage() {
             dayOfWeekDistribution={dayOfWeekDistribution}
             originDelayChartData={originDelayChartData}
             destinationDelayChartData={destinationDelayChartData}
+            periodPunctualityData={
+              granularity === "weekly" ? _weeklyPunctuality : monthlyPunctuality
+            }
+            trendLabel={granularity === "weekly" ? "Weekly" : "Monthly"}
             filteredLoads={filteredLoads}
             timeRange={timeRange}
           />
@@ -1088,10 +1277,15 @@ export default function ReportsPage() {
             backloadPackagingDistribution={backloadPackagingDistribution}
             backloadStatusDistribution={backloadStatusDistribution}
             backloadDestinationDistribution={backloadDestinationDistribution}
-            backloadWeeklyTrend={backloadWeeklyTrend}
+            backloadWeeklyTrend={
+              granularity === "weekly" ? backloadWeeklyTrend : backloadMonthlyTrend
+            }
+            trendLabel={granularity === "weekly" ? "Weekly" : "Monthly"}
             backloadRouteAnalysis={backloadRouteAnalysis}
             backloadCargoTypeDistribution={backloadCargoTypeDistribution}
           />
+
+          <ClientFeedbackTab granularity={granularity} timeRange={timeRange} />
         </Tabs>
       </div>
     </MainLayout>

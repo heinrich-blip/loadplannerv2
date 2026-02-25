@@ -55,6 +55,13 @@ interface TimeAnalysisTabProps {
   dayOfWeekDistribution: DayOfWeekData[];
   originDelayChartData: DelayBarRow[];
   destinationDelayChartData: DelayBarRow[];
+  periodPunctualityData: Array<{
+    week: string;
+    loads: number;
+    originDelayCount: number;
+    destDelayCount: number;
+  }>;
+  trendLabel?: "Weekly" | "Monthly";
   filteredLoads: Load[];
   timeRange: "3months" | "6months" | "12months"; // Fixed: narrowed type from string to literal union
 }
@@ -64,6 +71,8 @@ export function TimeAnalysisTab({
   dayOfWeekDistribution,
   originDelayChartData,
   destinationDelayChartData,
+  periodPunctualityData,
+  trendLabel = "Weekly",
   filteredLoads,
   timeRange,
 }: TimeAnalysisTabProps) {
@@ -140,7 +149,66 @@ export function TimeAnalysisTab({
         </Card>
       </div>
 
-      {/* Removed Compact Daily & Weekly Variance section per request */}
+      {/* Period Punctuality Trend */}
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-semibold">
+            {trendLabel} Punctuality Trend
+          </CardTitle>
+          <CardDescription>
+            Delays and load volume over time ({trendLabel.toLowerCase()})
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={periodPunctualityData}
+                margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#e5e7eb"
+                  opacity={0.4}
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="week"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#6b7280", fontSize: 11 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#6b7280", fontSize: 12 }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar
+                  dataKey="loads"
+                  name="Loads"
+                  fill="#6366f1"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="originDelayCount"
+                  name="Origin Delays"
+                  fill="#f59e0b"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="destDelayCount"
+                  name="Destination Delays"
+                  fill="#ef4444"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Delivery Performance Distribution */}

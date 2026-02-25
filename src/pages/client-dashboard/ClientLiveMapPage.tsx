@@ -1,30 +1,29 @@
+// ClientLiveMapPage.tsx - Refined implementation
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClientActiveLoads } from '@/hooks/useClientLoads';
 import type { Load } from '@/hooks/useLoads';
-import { calculateDistance, DEPOTS, customLocationToDepot, type Depot } from '@/lib/depots';
-import { formatDistance } from '@/lib/waypoints';
+import { DEPOTS, customLocationToDepot, type Depot } from '@/lib/depots';
 import { useCustomLocations } from '@/hooks/useCustomLocations';
-import { calculateRoadDistance, decodePolyline } from '@/lib/routing';
+import { calculateRoute, decodePolyline } from '@/lib/routing';
 import {
   formatLastConnected,
   getAssetsForPortal,
-  getStatusColor,
   type TelematicsAsset,
 } from '@/lib/telematicsGuru';
-import { getLocationDisplayName } from '@/lib/utils';
+import { getLocationDisplayName, cn } from '@/lib/utils';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   AlertCircle,
   Clock,
-  MapPin,
   Navigation,
   Package,
   RefreshCw,
   Truck,
+  Loader2,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -38,79 +37,100 @@ import {
   useMap,
 } from 'react-leaflet';
 import { useParams } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 
 // Fix Leaflet default icons
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: () => string })
-  ._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: () => string })._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl:
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl:
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-function createVehicleIcon(
-  asset: TelematicsAsset,
-  isSelected: boolean = false,
-): L.DivIcon {
-  const isStationary = asset.speedKmH < 5 && !asset.inTrip;
-  const color = isStationary ? '#ef4444' : getStatusColor(asset);
-  const rotation = asset.heading || 0;
-  const fleetNumber = asset.name || asset.code || `${asset.id}`;
-  const displayNumber =
-    fleetNumber.length > 8 ? fleetNumber.substring(0, 7) + '…' : fleetNumber;
-
-  // Add selection indicator
-  const selectionRing = isSelected
-    ? `<div style="position:absolute;top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:50%;border:3px solid #7c3aed;animation:pulse 1.5s infinite;"></div>`
+// Green directional arrow when moving, solid red dot when stopped — with fleet label
+function createVehicleIcon(asset: TelematicsAsset, isSelected: boolean = false, fleetNumber?: string): L.DivIcon {
+  const heading = asset.heading ?? 0;
+  const isMoving = asset.speedKmH > 0;
+  const label = fleetNumber || '';
+  const labelHtml = label
+    ? `<div style="position:absolute;left:50%;transform:translateX(-50%);top:100%;margin-top:2px;white-space:nowrap;background:white;padding:1px 5px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,0.15);border:1px solid rgba(0,0,0,0.08);">
+        <span style="font-size:9px;font-weight:700;color:#1f2937;letter-spacing:0.02em;">${label}</span>
+      </div>`
     : '';
 
-  const loadIndicator = `
-    <div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);background:#7c3aed;color:white;font-size:8px;padding:1px 4px;border-radius:4px;white-space:nowrap;font-weight:bold;border:1px solid white;">
-      LOAD
-    </div>
-  `;
+  if (!isMoving) {
+    // Stopped: prominent red dot with outer glow
+    const dotSize = isSelected ? 28 : 22;
+    const dotHalf = dotSize / 2;
+    const inner = dotSize - 6;
+    return L.divIcon({
+      html: `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+          <div style="width:${dotSize}px;height:${dotSize}px;position:relative;">
+            ${isSelected ? `<div style="position:absolute;inset:-10px;border-radius:50%;border:2.5px solid #6366f1;opacity:0.5;animation:pulse 2s infinite;"></div>` : ''}
+            <div style="width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #f87171, #dc2626);border:3px solid white;box-shadow:0 0 0 1px rgba(220,38,38,0.3),0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+              <div style="width:${inner * 0.35}px;height:${inner * 0.35}px;border-radius:50%;background:rgba(255,255,255,0.5);"></div>
+            </div>
+          </div>
+          ${labelHtml}
+        </div>
+      `,
+      className: 'vehicle-stopped-marker',
+      iconSize: [80, dotSize + 18],
+      iconAnchor: [40, dotHalf],
+    });
+  }
 
-  const statusIndicator = asset.inTrip
-    ? `<div style="position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid white;animation:pulse 1.5s infinite;"></div>`
-    : '';
+  // Moving: larger green circle with crisp white directional arrow
+  const size = isSelected ? 42 : 34;
+  const half = size / 2;
+  const ringColor = isSelected ? '#6366f1' : 'white';
+  return L.divIcon({
+    html: `
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:${size}px;height:${size}px;position:relative;">
+          ${isSelected ? `<div style="position:absolute;inset:-8px;border-radius:50%;border:2.5px solid #6366f1;opacity:0.5;animation:pulse 2s infinite;"></div>` : ''}
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.25));">
+            <defs>
+              <radialGradient id="gm${asset.id}" cx="40%" cy="35%">
+                <stop offset="0%" stop-color="#4ade80"/>
+                <stop offset="100%" stop-color="#16a34a"/>
+              </radialGradient>
+            </defs>
+            <circle cx="${half}" cy="${half}" r="${half - 1.5}" fill="url(#gm${asset.id})" stroke="${ringColor}" stroke-width="2.5"/>
+            <g transform="rotate(${heading} ${half} ${half})">
+              <polygon points="${half},${half * 0.25} ${half * 0.55},${half * 1.4} ${half},${half * 1.1} ${half * 1.45},${half * 1.4}" fill="white" opacity="0.95"/>
+            </g>
+          </svg>
+        </div>
+        ${labelHtml}
+      </div>
+    `,
+    className: 'vehicle-direction-marker',
+    iconSize: [80, size + 18],
+    iconAnchor: [40, half],
+  });
+}
 
-  const iconContent = isStationary
-    ? ''
-    : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2L12 22M12 2L5 9M12 2L19 9"/>
-      </svg>`;
-
-  const fleetLabel = `
-    <div style="position:absolute;top:30px;left:50%;transform:translateX(-50%);background:white;color:#1e293b;font-size:10px;padding:2px 8px;border-radius:4px;white-space:nowrap;font-weight:700;letter-spacing:0.2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);border:1.5px solid ${color};">
-      ${displayNumber}
-    </div>
-  `;
+// Depot pin icon for route endpoints
+function createDepotPinIcon(name: string, type: 'origin' | 'destination'): L.DivIcon {
+  const isOrigin = type === 'origin';
+  const bg = isOrigin ? '#3b82f6' : '#10b981';
+  const letter = isOrigin ? 'A' : 'B';
 
   return L.divIcon({
     html: `
-      <div style="width:80px;height:70px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:0;overflow:visible;">
-        ${selectionRing}
-        <div style="
-          width:28px;height:28px;border-radius:50%;background:${color};
-          border:3px solid #7c3aed;display:flex;align-items:center;justify-content:center;
-          box-shadow:0 2px 8px rgba(0,0,0,0.3);${isStationary ? '' : `transform:rotate(${rotation}deg);`}
-        ">
-          ${iconContent}
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;width:140px;margin-left:-70px;">
+        <div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:${bg};transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.25);border:2.5px solid white;">
+          <span style="transform:rotate(45deg);color:white;font-size:12px;font-weight:700;line-height:1;">${letter}</span>
         </div>
-        ${statusIndicator}
-        ${fleetLabel}
-        ${loadIndicator}
+        <div style="margin-top:3px;background:white;padding:2px 8px;border-radius:6px;box-shadow:0 1px 6px rgba(0,0,0,0.12);border:1px solid rgba(0,0,0,0.06);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          <span style="font-size:10px;font-weight:600;color:#1f2937;letter-spacing:-0.01em;">${name}</span>
+        </div>
       </div>
-      <style>@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:0.7}}</style>
     `,
-    className: 'vehicle-marker',
-    iconSize: [80, 70],
-    iconAnchor: [40, 14],
-    popupAnchor: [0, -14],
+    className: 'depot-pin-marker',
+    iconSize: [0, 0],
+    iconAnchor: [0, 28],
   });
 }
 
@@ -118,19 +138,16 @@ function FitBounds({ assets, loads, allDepots }: { assets: TelematicsAsset[]; lo
   const map = useMap();
 
   useEffect(() => {
-    // Guard: ensure map is fully initialized before calling fitBounds
     if (!map || !map.getContainer()) return;
 
     const points: [number, number][] = [];
 
-    // Add vehicle positions
     assets.forEach((a) => {
-      if (a.lastLatitude !== null && a.lastLongitude !== null) {
+      if (a.lastLatitude && a.lastLongitude) {
         points.push([a.lastLatitude, a.lastLongitude]);
       }
     });
 
-    // Add origin/destination depot locations
     loads.forEach((load) => {
       const originName = getLocationDisplayName(load.origin);
       const destName = getLocationDisplayName(load.destination);
@@ -153,41 +170,39 @@ function FitBounds({ assets, loads, allDepots }: { assets: TelematicsAsset[]; lo
   return null;
 }
 
-// Component to fetch and render road-following route line
 function RoadRoutePolyline({
-  originLat,
-  originLng,
-  destLat,
-  destLng,
+  waypoints,
   isSelected = false,
 }: {
-  originLat: number;
-  originLng: number;
-  destLat: number;
-  destLng: number;
+  waypoints: { latitude: number; longitude: number }[];
   isSelected?: boolean;
 }) {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
 
+  // Create a stable key from waypoints to avoid unnecessary refetches
+  const waypointKey = waypoints.map((w) => `${w.latitude.toFixed(4)},${w.longitude.toFixed(4)}`).join('|');
+
   useEffect(() => {
+    if (waypoints.length < 2) return;
+
     const fetchRoute = async () => {
       try {
-        const result = await calculateRoadDistance(originLat, originLng, destLat, destLng);
+        const result = await calculateRoute(waypoints);
         if (result.geometry) {
           const coords = decodePolyline(result.geometry);
           setRouteCoords(coords);
         } else {
-          // Fallback to straight line
-          setRouteCoords([[originLat, originLng], [destLat, destLng]]);
+          // Fallback: straight lines between waypoints
+          setRouteCoords(waypoints.map((w) => [w.latitude, w.longitude] as [number, number]));
         }
       } catch (err) {
         console.error('Failed to fetch road route:', err);
-        // Fallback to straight line
-        setRouteCoords([[originLat, originLng], [destLat, destLng]]);
+        setRouteCoords(waypoints.map((w) => [w.latitude, w.longitude] as [number, number]));
       }
     };
     fetchRoute();
-  }, [originLat, originLng, destLat, destLng]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waypointKey]);
 
   if (routeCoords.length === 0) return null;
 
@@ -195,10 +210,10 @@ function RoadRoutePolyline({
     <Polyline
       positions={routeCoords}
       pathOptions={{ 
-        color: isSelected ? "#7c3aed" : "#ef4444", 
-        weight: isSelected ? 5 : 3, 
-        opacity: isSelected ? 0.9 : 0.5,
-        dashArray: isSelected ? undefined : "5, 5"
+        color: isSelected ? 'hsl(var(--accent))' : 'hsl(var(--primary)/0.2)', 
+        weight: isSelected ? 3 : 2, 
+        opacity: isSelected ? 0.8 : 0.4,
+        dashArray: isSelected ? undefined : '5, 5'
       }}
     />
   );
@@ -209,7 +224,6 @@ export default function ClientLiveMapPage() {
   const { data: loads = [], isLoading: loadsLoading } = useClientActiveLoads(clientId);
   const { data: customLocations = [] } = useCustomLocations();
 
-  // State for selected vehicle
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
 
   const extraDepots = useMemo(
@@ -244,11 +258,10 @@ export default function ClientLiveMapPage() {
 
   useEffect(() => {
     fetchTelematicsData();
-    const interval = setInterval(fetchTelematicsData, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchTelematicsData, 30000);
     return () => clearInterval(interval);
   }, [fetchTelematicsData]);
 
-  // Match loads to telematics assets
   const matchedLoads = useMemo(() => {
     return loads.map((load) => {
       const vehicleId = load.fleet_vehicle?.telematics_asset_id;
@@ -262,13 +275,11 @@ export default function ClientLiveMapPage() {
     });
   }, [loads, telematicsAssets]);
 
-  // Only in-transit loads appear on the map
   const inTransitMatchedLoads = useMemo(
     () => matchedLoads.filter(({ load }) => load.status === 'in-transit'),
     [matchedLoads]
   );
 
-  // Get unique depots for in-transit loads (shown on map)
   const relevantDepots = useMemo(() => {
     const depotNames = new Set<string>();
     inTransitMatchedLoads.forEach(({ load }) => {
@@ -280,420 +291,324 @@ export default function ClientLiveMapPage() {
     return allDepots.filter((d) => depotNames.has(d.name));
   }, [inTransitMatchedLoads, allDepots]);
 
-  // In-transit vehicles with GPS positions (for map markers)
   const inTransitTrackedVehicles = inTransitMatchedLoads.filter(
     (m) => m.asset && m.asset.lastLatitude && m.asset.lastLongitude
   );
 
   const isLoading = loadsLoading || telematicsLoading;
 
-  // Handle vehicle selection
   const handleVehicleSelect = (vehicleId: string) => {
     setSelectedVehicleId(prevId => prevId === vehicleId ? null : vehicleId);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-purple-500" />
-            Live Tracking
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Real-time location of your active shipments
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {lastRefresh && (
-            <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
-              Updated {formatLastConnected(lastRefresh.toISOString())}
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchTelematicsData}
-            disabled={telematicsLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${telematicsLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
+    <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Loads</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
-              <Package className="h-5 w-5 text-purple-500" />
-              {loads.length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Transit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
-              <Truck className="h-5 w-5 text-blue-500" />
-              {loads.filter((l) => l.status === 'in-transit').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-500" />
-              {loads.filter((l) => l.status === 'scheduled').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Tracked (In Transit)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
-              <Navigation className="h-5 w-5 text-green-500" />
-              {inTransitTrackedVehicles.length}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="stats-grid">
+        <StatCard title="Active Loads" value={loads.length} icon={Package} />
+        <StatCard 
+          title="In Transit" 
+          value={loads.filter((l) => l.status === 'in-transit').length} 
+          icon={Truck} 
+        />
+        <StatCard 
+          title="Scheduled" 
+          value={loads.filter((l) => l.status === 'scheduled').length} 
+          icon={Clock} 
+        />
+        <StatCard 
+          title="Tracked" 
+          value={inTransitTrackedVehicles.length} 
+          icon={Navigation} 
+        />
       </div>
 
-      {/* Vehicle Selection Bar - only in-transit vehicles */}
-      {inTransitTrackedVehicles.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-lg">
-          <span className="text-sm font-medium text-muted-foreground px-2 py-1">
-            Select vehicle to show route:
-          </span>
-          {inTransitTrackedVehicles.map(({ load, asset }) => (
-            <Button
-              key={load.id}
-              variant={selectedVehicleId === asset?.id.toString() ? "default" : "outline"}
-              size="sm"
-              onClick={() => asset && handleVehicleSelect(asset.id.toString())}
-              className={cn(
-                "gap-2",
-                selectedVehicleId === asset?.id.toString() && "bg-purple-600 hover:bg-purple-700"
-              )}
-            >
-              <Truck className="h-3 w-3" />
-              {load.fleet_vehicle?.vehicle_id || `Vehicle ${asset?.id}`}
-            </Button>
-          ))}
-          {selectedVehicleId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedVehicleId(null)}
-              className="ml-auto"
-            >
-              Clear Selection
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Map */}
-      <Card className="overflow-hidden">
+      {/* Map Card */}
+      <Card className="overflow-hidden border-subtle shadow-sm">
         <CardContent className="p-0">
           {isLoading ? (
-            <Skeleton className="w-full h-[350px] sm:h-[500px]" />
+            <div className="w-full h-[400px] flex items-center justify-center bg-subtle">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
           ) : telematicsError ? (
-            <div className="w-full h-[350px] sm:h-[500px] flex items-center justify-center bg-muted/50">
-              <div className="text-center px-4">
-                <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">Unable to load tracking data</p>
+            <div className="w-full h-[400px] flex items-center justify-center bg-subtle">
+              <div className="text-center">
+                <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">Unable to load tracking data</p>
                 <Button variant="outline" size="sm" className="mt-4" onClick={fetchTelematicsData}>
                   Try Again
                 </Button>
               </div>
             </div>
           ) : inTransitMatchedLoads.length === 0 ? (
-            <div className="w-full h-[350px] sm:h-[500px] flex items-center justify-center bg-muted/50">
-              <div className="text-center px-4">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No in-transit loads to track</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  In-transit shipments will appear here in real-time
-                </p>
+            <div className="w-full h-[400px] flex items-center justify-center bg-subtle">
+              <div className="text-center">
+                <Package className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No in-transit loads to track</p>
               </div>
             </div>
           ) : (
-            <div className="h-[350px] sm:h-[500px]">
-            <MapContainer
-              center={[-19.5, 30.5]}
-              zoom={7}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+            <div className="relative h-[430px] sm:h-[500px] lg:h-[560px]">
+              <MapContainer
+                center={[-19.5, 30.5]}
+                zoom={7}
+                style={{ height: '100%', width: '100%' }}
+                className="z-0"
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
 
-              <FitBounds
-                assets={inTransitTrackedVehicles.map((t) => t.asset!)}
-                loads={inTransitMatchedLoads.map((t) => t.load)}
-                allDepots={allDepots}
-              />
+                <FitBounds
+                  assets={inTransitTrackedVehicles.map((t) => t.asset!)}
+                  loads={inTransitMatchedLoads.map((t) => t.load)}
+                  allDepots={allDepots}
+                />
 
-              {/* Depot Markers */}
-              {relevantDepots.map((depot) => (
-                <Circle
-                  key={depot.id}
-                  center={[depot.latitude, depot.longitude]}
-                  radius={depot.radius}
-                  pathOptions={{
-                    color: '#7c3aed',
-                    fillColor: '#7c3aed',
-                    fillOpacity: 0.1,
-                  }}
-                >
-                  <Tooltip permanent direction="bottom" offset={[0, 10]}>
-                    <span className="font-medium">{depot.name}</span>
-                  </Tooltip>
-                </Circle>
-              ))}
+                {/* Depot Markers */}
+                {relevantDepots.map((depot) => (
+                  <Circle
+                    key={depot.id}
+                    center={[depot.latitude, depot.longitude]}
+                    radius={depot.radius}
+                    pathOptions={{
+                      color: 'hsl(var(--primary)/0.3)',
+                      fillColor: 'hsl(var(--primary)/0.05)',
+                      fillOpacity: 0.5,
+                    }}
+                  >
+                    <Tooltip direction="bottom" offset={[0, 10]}>
+                      <span className="text-xs font-medium">{depot.name}</span>
+                    </Tooltip>
+                  </Circle>
+                ))}
 
-              {/* Vehicle Markers - only in-transit */}
-              {inTransitTrackedVehicles.map(({ load, asset }) => {
-                if (!asset || !asset.lastLatitude || !asset.lastLongitude) return null;
+                {/* Vehicle Markers */}
+                {inTransitTrackedVehicles.map(({ load, asset }) => {
+                  if (!asset?.lastLatitude || !asset?.lastLongitude) return null;
 
-                const destName = getLocationDisplayName(load.destination);
-                const destDepot = allDepots.find((d) => d.name === destName);
-                const isSelected = selectedVehicleId === asset.id.toString();
-                
-                let distanceToDestination = '';
-                if (destDepot) {
-                  const dist = calculateDistance(
-                    asset.lastLatitude,
-                    asset.lastLongitude,
-                    destDepot.latitude,
-                    destDepot.longitude
-                  );
-                  distanceToDestination = formatDistance(dist);
-                }
+                  const isSelected = selectedVehicleId === asset.id.toString();
 
-                return (
-                  <React.Fragment key={load.id}>
+                  return (
                     <Marker
+                      key={load.id}
                       position={[asset.lastLatitude, asset.lastLongitude]}
-                      icon={createVehicleIcon(asset, isSelected)}
+                      icon={createVehicleIcon(asset, isSelected, load.fleet_vehicle?.vehicle_id)}
                       eventHandlers={{
                         click: () => handleVehicleSelect(asset.id.toString())
                       }}
+                      zIndexOffset={isSelected ? 1000 : 0}
                     >
-                      <Popup>
-                        <div className="p-2 min-w-[200px]">
-                          <div className="font-semibold text-lg mb-2">
-                            {load.fleet_vehicle?.vehicle_id || 'Vehicle'}
+                      <Popup className="rounded-lg">
+                        <div className="p-2.5 min-w-[230px]">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: asset.speedKmH > 0 ? '#22c55e' : '#ef4444' }} />
+                            <span style={{ fontWeight: 600, fontSize: 13, color: '#111827' }}>{load.load_id}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{load.fleet_vehicle?.vehicle_id}</span>
                           </div>
-                          <div className="space-y-2 text-sm">
-                            {/* Load ID */}
-                            <div>
-                              <span className="text-muted-foreground">Load:</span>{' '}
-                              <span className="font-medium">{load.load_id}</span>
-                            </div>
-                            
-                            {/* Origin */}
-                            <div>
-                              <span className="text-muted-foreground">From:</span>{' '}
-                              <span>{getLocationDisplayName(load.origin)}</span>
-                            </div>
-                            
-                            {/* Destination */}
-                            <div>
-                              <span className="text-muted-foreground">To:</span>{' '}
-                              <span>{getLocationDisplayName(load.destination)}</span>
-                            </div>
-                            
-                            {/* Status */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">Status:</span>
-                              <Badge
-                                variant={
-                                  load.status === 'in-transit'
-                                    ? 'default'
-                                    : load.status === 'delivered'
-                                    ? 'secondary'
-                                    : 'outline'
-                                }
-                              >
-                                {load.status}
-                              </Badge>
-                            </div>
-                            
-                            {/* Speed */}
-                            <div>
-                              <span className="text-muted-foreground">Speed:</span>{' '}
-                              <span>{asset.speedKmH} km/h</span>
-                            </div>
-                            
-                            {/* Distance to destination */}
-                            {distanceToDestination && (
-                              <div>
-                                <span className="text-muted-foreground">Distance to destination:</span>{' '}
-                                <span className="font-medium">{distanceToDestination}</span>
-                              </div>
-                            )}
-                            
-                            {/* Last updated */}
-                            {asset.lastConnectedUtc && (
-                              <div>
-                                <span className="text-muted-foreground">Updated:</span>{' '}
-                                <span>{formatLastConnected(asset.lastConnectedUtc)}</span>
-                              </div>
-                            )}
-                            
-                            {/* Show route button in popup */}
-                            <Button
-                              size="sm"
-                              variant={isSelected ? "default" : "outline"}
-                              className="w-full mt-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleVehicleSelect(asset.id.toString());
-                              }}
-                            >
-                              {isSelected ? "Hide Route" : "Show Route"}
-                            </Button>
+                          <div className="space-y-1.5 text-xs">
+                            <p style={{ color: '#374151', fontWeight: 500 }}>
+                              {getLocationDisplayName(load.origin)} → {getLocationDisplayName(load.destination)}
+                            </p>
+                            <p style={{ color: '#1f2937' }}>Speed: <strong>{asset.speedKmH} km/h</strong></p>
+                            <p style={{ color: '#6b7280', fontSize: 10 }}>
+                              Updated {formatLastConnected(asset.lastConnectedUtc)}
+                            </p>
                           </div>
                         </div>
                       </Popup>
+                      <Tooltip direction="top" offset={[0, -16]} opacity={0.9}>
+                        <span style={{ fontSize: 11, fontWeight: 600 }}>{load.fleet_vehicle?.vehicle_id || load.load_id}</span>
+                      </Tooltip>
                     </Marker>
-                    
-                    {/* Road-following route line - only show if selected */}
-                    {destDepot && isSelected && (
-                      <RoadRoutePolyline
-                        originLat={asset.lastLatitude}
-                        originLng={asset.lastLongitude}
-                        destLat={destDepot.latitude}
-                        destLng={destDepot.longitude}
-                        isSelected={true}
-                      />
+                  );
+                })}
+
+                {/* Selected vehicle: route + depot pins */}
+                {(() => {
+                  if (!selectedVehicleId) return null;
+                  const match = inTransitTrackedVehicles.find(({ asset }) => asset?.id.toString() === selectedVehicleId);
+                  if (!match?.asset?.lastLatitude || !match?.asset?.lastLongitude) return null;
+
+                  const { load, asset } = match;
+                  const originName = getLocationDisplayName(load.origin);
+                  const destName = getLocationDisplayName(load.destination);
+                  const originDepot = allDepots.find((d) => d.name === originName);
+                  const destDepot = allDepots.find((d) => d.name === destName);
+
+                  // Only show the remaining route: vehicle position → destination
+                  const routeWaypoints: { latitude: number; longitude: number }[] = [];
+                  routeWaypoints.push({ latitude: asset.lastLatitude!, longitude: asset.lastLongitude! });
+                  if (destDepot) routeWaypoints.push({ latitude: destDepot.latitude, longitude: destDepot.longitude });
+
+                  return (
+                    <React.Fragment>
+                      {originDepot && (
+                        <Marker
+                          position={[originDepot.latitude, originDepot.longitude]}
+                          icon={createDepotPinIcon(originName, 'origin')}
+                        />
+                      )}
+                      {destDepot && (
+                        <Marker
+                          position={[destDepot.latitude, destDepot.longitude]}
+                          icon={createDepotPinIcon(destName, 'destination')}
+                        />
+                      )}
+                      {routeWaypoints.length >= 2 && (
+                        <RoadRoutePolyline
+                          waypoints={routeWaypoints}
+                          isSelected={true}
+                        />
+                      )}
+                    </React.Fragment>
+                  );
+                })()}
+              </MapContainer>
+
+              {/* Fleet selection side panel (desktop) / bottom panel (mobile) */}
+              {inTransitTrackedVehicles.length > 0 && (
+                <div className="absolute z-[1000] left-3 right-3 bottom-3 md:top-3 md:left-3 md:right-auto md:bottom-auto md:w-80">
+                  <div className="rounded-xl border border-subtle bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 shadow-lg">
+                    <div className="p-3 border-b border-subtle">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-semibold tracking-tight">Fleet Selection</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={fetchTelematicsData}
+                          disabled={telematicsLoading}
+                          className="h-7 px-2 gap-1 text-[11px] border-subtle"
+                        >
+                          <RefreshCw className={cn('h-3 w-3', telematicsLoading && 'animate-spin')} />
+                          Refresh
+                        </Button>
+                      </div>
+                      {lastRefresh && (
+                        <p className="mt-1.5 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                          <Clock className="h-3 w-3" />
+                          Updated {formatLastConnected(lastRefresh.toISOString())}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="p-2 max-h-48 md:max-h-72 overflow-y-auto space-y-1.5">
+                      {inTransitTrackedVehicles.map(({ load, asset }) => (
+                        <button
+                          key={load.id}
+                          onClick={() => asset && handleVehicleSelect(asset.id.toString())}
+                          className={cn(
+                            'w-full text-left rounded-lg border px-3 py-2.5 transition-colors',
+                            selectedVehicleId === asset?.id.toString()
+                              ? 'bg-accent text-accent-foreground border-accent'
+                              : 'bg-card border-subtle hover:bg-subtle/70'
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold">
+                              {load.fleet_vehicle?.vehicle_id || `V${asset?.id}`}
+                            </span>
+                            <span className="text-[11px] opacity-80">{load.load_id}</span>
+                          </div>
+                          <p className="text-xs opacity-80 truncate mt-0.5">
+                            {getLocationDisplayName(load.origin)} → {getLocationDisplayName(load.destination)}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+
+                    {selectedVehicleId && (
+                      <div className="p-2 border-t border-subtle">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedVehicleId(null)}
+                          className="w-full text-xs"
+                        >
+                          Clear Selection
+                        </Button>
+                      </div>
                     )}
-                    
-                    {/* Optionally show faint routes for all vehicles when none selected */}
-                    {destDepot && !selectedVehicleId && (
-                      <RoadRoutePolyline
-                        originLat={asset.lastLatitude}
-                        originLng={asset.lastLongitude}
-                        destLat={destDepot.latitude}
-                        destLng={destDepot.longitude}
-                        isSelected={false}
-                      />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </MapContainer>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Active Loads List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5" />
-            Active Shipments
-          </CardTitle>
+      {/* Active Shipments List */}
+      <Card className="border-subtle shadow-sm">
+        <CardHeader className="px-4 py-3.5 border-b border-subtle bg-card/70">
+          <CardTitle className="text-sm font-semibold tracking-tight">Active Shipments</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 divide-y divide-border">
           {loadsLoading ? (
-            <div className="space-y-2">
+            <div className="p-4 space-y-2">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16" />
+                <Skeleton key={i} className="h-12" />
               ))}
             </div>
           ) : loads.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">No active shipments</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No active shipments
+            </div>
           ) : (
-            <div className="divide-y">
-              {matchedLoads.map(({ load, asset }) => (
-                <div 
-                  key={load.id} 
-                  className={cn(
-                    "py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 cursor-pointer hover:bg-muted/50 px-2 rounded-lg transition-colors",
-                    selectedVehicleId === asset?.id.toString() && "bg-purple-50 dark:bg-purple-950/20 border-l-4 border-purple-500"
-                  )}
-                  onClick={() => asset && handleVehicleSelect(asset.id.toString())}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0",
-                      selectedVehicleId === asset?.id.toString() 
-                        ? "bg-purple-200 dark:bg-purple-800" 
-                        : "bg-purple-100 dark:bg-purple-900/30"
-                    )}>
-                      <Package className={cn(
-                        "h-5 w-5",
-                        selectedVehicleId === asset?.id.toString()
-                          ? "text-purple-700 dark:text-purple-300"
-                          : "text-purple-600 dark:text-purple-400"
-                      )} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-medium">{load.load_id}</div>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {getLocationDisplayName(load.origin)} → {getLocationDisplayName(load.destination)}
-                      </div>
-                    </div>
+            matchedLoads.map(({ load, asset }) => (
+              <button
+                key={load.id}
+                onClick={() => asset && handleVehicleSelect(asset.id.toString())}
+                className={cn(
+                  "w-full px-4 py-3.5 flex items-center justify-between text-left transition-colors hover:bg-subtle/70",
+                  selectedVehicleId === asset?.id.toString() && "bg-subtle/70"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 rounded-lg bg-subtle border border-subtle">
+                    <Package className="h-3.5 w-3.5 text-muted-foreground" />
                   </div>
-                  <div className="flex items-center gap-2 sm:gap-3 ml-13 sm:ml-0 flex-wrap">
-                    {load.fleet_vehicle && (
-                      <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
-                        {load.fleet_vehicle.vehicle_id}
-                      </span>
-                    )}
-                    <Badge
-                      variant={
-                        load.status === 'in-transit'
-                          ? 'default'
-                          : load.status === 'delivered'
-                          ? 'secondary'
-                          : 'outline'
-                      }
-                    >
-                      {load.status}
-                    </Badge>
-                    {asset ? (
-                      <Badge 
-                        variant="outline" 
-                        className={cn(
-                          "border-green-200",
-                          selectedVehicleId === asset.id.toString() 
-                            ? "bg-purple-100 text-purple-700 border-purple-200" 
-                            : "bg-green-50 text-green-700"
-                        )}
-                      >
-                        <Navigation className="h-3 w-3 mr-1" />
-                        {selectedVehicleId === asset.id.toString() ? "Selected" : "Tracked"}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-gray-50 text-gray-500">
-                        No GPS
-                      </Badge>
-                    )}
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">{load.load_id}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {getLocationDisplayName(load.origin)} → {getLocationDisplayName(load.destination)}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="flex items-center gap-2">
+                  {load.fleet_vehicle && (
+                    <span className="text-xs text-muted-foreground">
+                      {load.fleet_vehicle.vehicle_id}
+                    </span>
+                  )}
+                  <Badge data-status={load.status} className="status-badge">
+                    {load.status}
+                  </Badge>
+                </div>
+              </button>
+            ))
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function StatCard({ title, value, icon: Icon }: { title: string; value: number; icon: React.ElementType }) {
+  return (
+    <div className="kpi-card">
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">{title}</p>
+          <p className="text-xl font-medium">{value}</p>
+        </div>
+        <div className="p-1.5 rounded-lg bg-subtle">
+          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+      </div>
     </div>
   );
 }

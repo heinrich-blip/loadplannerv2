@@ -1,5 +1,7 @@
 import type { Load } from "@/hooks/useLoads";
 import {
+  eachWeekOfInterval,
+  endOfWeek,
   endOfMonth,
   format,
   getDay,
@@ -49,6 +51,11 @@ interface DayOfWeekData {
 
 interface MonthlyTrend {
   month: string;
+  loads: number;
+}
+
+interface WeeklyTrend {
+  week: string;
   loads: number;
 }
 
@@ -186,6 +193,33 @@ function calculateMonthlyTrend(
   return months;
 }
 
+function calculateWeeklyTrend(
+  loads: Load[],
+  timeRange: ReportOptions["timeRange"],
+): WeeklyTrend[] {
+  const now = new Date();
+  const monthsToSubtract =
+    timeRange === "3months" ? 3 : timeRange === "6months" ? 6 : 12;
+  const startDate = subMonths(now, monthsToSubtract);
+  const weeks = eachWeekOfInterval(
+    { start: startDate, end: now },
+    { weekStartsOn: 1 },
+  );
+
+  return weeks.map((weekStart) => {
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+    const weekLoads = loads.filter((load) => {
+      const loadDate = parseISO(load.loading_date);
+      return loadDate >= weekStart && loadDate <= weekEnd;
+    });
+
+    return {
+      week: format(weekStart, "MMM d"),
+      loads: weekLoads.length,
+    };
+  });
+}
+
 function calculateSummaryStats(loads: Load[]) {
   const totalLoads = loads.length;
   const deliveredCount = loads.filter((l) => l.status === "delivered").length;
@@ -222,7 +256,9 @@ export function exportReportsToPdf({
   reportType,
 }: ReportOptions): void {
   const filteredLoads = getFilteredLoads(loads, timeRange);
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
   const timeRangeLabel =
     timeRange === "3months"
@@ -242,18 +278,18 @@ export function exportReportsToPdf({
 
   // Header
   doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, 220, 40, "F");
+  doc.rect(0, 0, pageWidth, 28, "F");
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
-  doc.text("Load Flow Analytics Report", 15, 25);
+  doc.text("Load Flow Analytics Report", 12, 17);
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-  doc.text(`Generated: ${reportDate} | Period: Last ${timeRangeLabel}`, 15, 34);
+  doc.text(`Generated: ${reportDate} | Period: Last ${timeRangeLabel}`, 12, 24);
 
-  yPos = 55;
+  yPos = 36;
 
   // Summary Statistics Section
   const stats = calculateSummaryStats(filteredLoads);
@@ -293,7 +329,7 @@ export function exportReportsToPdf({
       1: { cellWidth: 50 },
     },
     margin: { left: 15, right: 15 },
-    tableWidth: 110,
+    tableWidth: 125,
   });
 
   yPos = (doc as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
@@ -334,7 +370,7 @@ export function exportReportsToPdf({
       },
       alternateRowStyles: { fillColor: [249, 250, 251] },
       margin: { left: 15, right: 15 },
-      tableWidth: 110,
+      tableWidth: 125,
     });
 
     yPos = (doc as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
@@ -344,9 +380,9 @@ export function exportReportsToPdf({
   if (reportType === "full" || reportType === "distribution") {
     const cargoDist = calculateCargoDistribution(filteredLoads);
 
-    if (yPos > 230) {
+    if (yPos > pageHeight - 35) {
       doc.addPage();
-      yPos = 20;
+      yPos = 16;
     }
 
     doc.setTextColor(...primaryColor);
@@ -386,9 +422,9 @@ export function exportReportsToPdf({
   if (reportType === "full" || reportType === "routes") {
     const topRoutes = calculateTopRoutes(filteredLoads);
 
-    if (yPos > 180) {
+    if (yPos > pageHeight - 55) {
       doc.addPage();
-      yPos = 20;
+      yPos = 16;
     }
 
     doc.setTextColor(...primaryColor);
@@ -418,8 +454,8 @@ export function exportReportsToPdf({
       },
       alternateRowStyles: { fillColor: [249, 250, 251] },
       columnStyles: {
-        0: { cellWidth: 120 },
-        1: { cellWidth: 40, halign: "center" },
+        0: { cellWidth: 180 },
+        1: { cellWidth: 35, halign: "center" },
       },
       margin: { left: 15, right: 15 },
     });
@@ -431,9 +467,9 @@ export function exportReportsToPdf({
   if (reportType === "full" || reportType === "time-analysis") {
     const dayDist = calculateDayOfWeekDistribution(filteredLoads);
 
-    if (yPos > 180) {
+    if (yPos > pageHeight - 55) {
       doc.addPage();
-      yPos = 20;
+      yPos = 16;
     }
 
     doc.setTextColor(...primaryColor);
@@ -467,19 +503,61 @@ export function exportReportsToPdf({
         1: { cellWidth: 60, halign: "center" },
       },
       margin: { left: 15, right: 15 },
-      tableWidth: 140,
+      tableWidth: 160,
     });
 
     yPos = (doc as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
   }
 
-  // Monthly Trend
+  // Weekly + Monthly Trends
   if (reportType === "full" || reportType === "time-analysis") {
+    const weeklyTrend = calculateWeeklyTrend(filteredLoads, timeRange);
     const monthlyTrend = calculateMonthlyTrend(filteredLoads, timeRange);
 
-    if (yPos > 180) {
+    if (yPos > pageHeight - 55) {
       doc.addPage();
-      yPos = 20;
+      yPos = 16;
+    }
+
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Weekly Load Trends", 15, yPos);
+
+    yPos += 10;
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Week", "Total Loads"]],
+      body: weeklyTrend.map((w) => [
+        w.week,
+        w.loads.toString(),
+      ]),
+      theme: "grid",
+      headStyles: {
+        fillColor: [99, 102, 241],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 10,
+      },
+      bodyStyles: {
+        textColor: textColor,
+        fontSize: 10,
+      },
+      alternateRowStyles: { fillColor: [249, 250, 251] },
+      columnStyles: {
+        0: { fontStyle: "bold", cellWidth: 80 },
+        1: { cellWidth: 70, halign: "center" },
+      },
+      margin: { left: 15, right: 15 },
+      tableWidth: 160,
+    });
+
+    yPos = (doc as jsPDFWithAutoTable).lastAutoTable.finalY + 12;
+
+    if (yPos > pageHeight - 55) {
+      doc.addPage();
+      yPos = 16;
     }
 
     doc.setTextColor(...primaryColor);
@@ -510,10 +588,10 @@ export function exportReportsToPdf({
       alternateRowStyles: { fillColor: [249, 250, 251] },
       columnStyles: {
         0: { fontStyle: "bold", cellWidth: 60 },
-        1: { cellWidth: 60, halign: "center" },
+        1: { cellWidth: 70, halign: "center" },
       },
       margin: { left: 15, right: 15 },
-      tableWidth: 140,
+      tableWidth: 160,
     });
 
     yPos = (doc as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
@@ -527,8 +605,8 @@ export function exportReportsToPdf({
     doc.setTextColor(...mutedColor);
     doc.text(
       `Page ${i} of ${pageCount} | Load Flow Analytics Report | Generated ${reportDate}`,
-      105,
-      290,
+      pageWidth / 2,
+      pageHeight - 6,
       { align: "center" },
     );
   }
@@ -549,19 +627,21 @@ export function exportReportsToPdf({
 // Compact variance PDF (daily/weekly + top delays by origin/destination)
 export function exportVarianceToPdf(loads: Load[], timeRange: ReportOptions["timeRange"] = "3months"): void {
   const filteredLoads = getFilteredLoads(loads, timeRange);
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const primary: [number, number, number] = [99, 102, 241];
   const text: [number, number, number] = [55, 65, 81];
   const reportDate = format(new Date(), "MMMM d, yyyy");
 
   // Header
   doc.setFillColor(...primary);
-  doc.rect(0, 0, 220, 28, "F");
+  doc.rect(0, 0, pageWidth, 24, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
-  doc.text("Punctuality Variance Report", 14, 18);
+  doc.text("Punctuality Variance Report", 12, 14);
   doc.setFontSize(10);
-  doc.text(`Generated: ${reportDate}`, 14, 24);
+  doc.text(`Generated: ${reportDate}`, 12, 20);
 
   // Use the shared parser
   const getTimeWindow = (load: Load): timeWindowLib.TimeWindowDataFull | null => {
@@ -634,14 +714,14 @@ export function exportVarianceToPdf(loads: Load[], timeRange: ReportOptions["tim
     ]);
 
   autoTable(doc, {
-    startY: 34,
+    startY: 30,
     head: [["Date", "Loads", "Avg OA", "Avg OD", "Avg DA", "Avg DD", "Origin Late", "Dest Late"]],
     body: dailyRows,
     theme: "grid",
     headStyles: { fillColor: primary, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 9 },
     bodyStyles: { textColor: text, fontSize: 9 },
     alternateRowStyles: { fillColor: [249, 250, 251] },
-    margin: { left: 12, right: 12 },
+    margin: { left: 10, right: 10 },
   });
 
   // Delays by Origin/Destination (top 10)
@@ -681,11 +761,11 @@ export function exportVarianceToPdf(loads: Load[], timeRange: ReportOptions["tim
 
   let y = (doc as jsPDFWithAutoTable).lastAutoTable?.finalY 
     ? (doc as jsPDFWithAutoTable).lastAutoTable.finalY + 10 
-    : 34;
+    : 30;
     
-  if (y > 230) {
+  if (y > pageHeight - 35) {
     doc.addPage();
-    y = 20;
+    y = 16;
   }
   
   doc.setTextColor(...primary);
@@ -700,14 +780,14 @@ export function exportVarianceToPdf(loads: Load[], timeRange: ReportOptions["tim
     theme: "grid",
     headStyles: { fillColor: [234, 179, 8], textColor: [0, 0, 0], fontStyle: "bold", fontSize: 9 },
     bodyStyles: { textColor: text, fontSize: 9 },
-    margin: { left: 12, right: 12 },
-    tableWidth: 90,
+    margin: { left: 10, right: 10 },
+    tableWidth: 125,
   });
 
   y = (doc as jsPDFWithAutoTable).lastAutoTable.finalY + 6;
-  if (y > 230) {
+  if (y > pageHeight - 35) {
     doc.addPage();
-    y = 20;
+    y = 16;
   }
   
   doc.setTextColor(...primary);
@@ -722,9 +802,17 @@ export function exportVarianceToPdf(loads: Load[], timeRange: ReportOptions["tim
     theme: "grid",
     headStyles: { fillColor: [34, 197, 94], textColor: [0, 0, 0], fontStyle: "bold", fontSize: 9 },
     bodyStyles: { textColor: text, fontSize: 9 },
-    margin: { left: 12, right: 12 },
-    tableWidth: 110,
+    margin: { left: 10, right: 10 },
+    tableWidth: 145,
   });
+
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 6, { align: "center" });
+  }
 
   doc.save(`variance-report-${format(new Date(), "yyyy-MM-dd")}.pdf`);
 }
@@ -732,19 +820,21 @@ export function exportVarianceToPdf(loads: Load[], timeRange: ReportOptions["tim
 // Punctuality details PDF (per-load planned vs actual with variances)
 export function exportPunctualityToPdf(loads: Load[], timeRange: ReportOptions["timeRange"] = "3months"): void {
   const filteredLoads = getFilteredLoads(loads, timeRange);
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const primary: [number, number, number] = [99, 102, 241];
   const text: [number, number, number] = [55, 65, 81];
   const reportDate = format(new Date(), "MMMM d, yyyy");
 
   // Header
   doc.setFillColor(...primary);
-  doc.rect(0, 0, 220, 28, "F");
+  doc.rect(0, 0, pageWidth, 24, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
-  doc.text("Punctuality Details (Planned vs Actual)", 14, 18);
+  doc.text("Punctuality Details (Planned vs Actual)", 12, 14);
   doc.setFontSize(10);
-  doc.text(`Generated: ${reportDate}`, 14, 24);
+  doc.text(`Generated: ${reportDate}`, 12, 20);
 
   // Use the shared parser
   const getTimeWindow = (load: Load): timeWindowLib.TimeWindowDataFull | null => {
@@ -792,7 +882,7 @@ export function exportPunctualityToPdf(loads: Load[], timeRange: ReportOptions["
   }
 
   autoTable(doc, {
-    startY: 34,
+    startY: 30,
     head: [[
       "Load ID", "Vehicle", "Origin", "Destination", "Loading Date", "Offloading Date", "Status",
       "O Plan Arr", "O Act Arr", "O Var (min)",
@@ -802,11 +892,21 @@ export function exportPunctualityToPdf(loads: Load[], timeRange: ReportOptions["
     ]],
     body: rows,
     theme: "grid",
-    headStyles: { fillColor: primary, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
-    bodyStyles: { textColor: text, fontSize: 8 },
+    headStyles: { fillColor: primary, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8.5 },
+    bodyStyles: { textColor: text, fontSize: 8, cellPadding: 2 },
+    styles: { overflow: "linebreak" },
     alternateRowStyles: { fillColor: [249, 250, 251] },
-    margin: { left: 8, right: 8 },
+    margin: { left: 6, right: 6 },
+    tableWidth: pageWidth - 12,
   });
+
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 6, { align: "center" });
+  }
 
   doc.save(`punctuality-details-${format(new Date(), "yyyy-MM-dd")}.pdf`);
 }

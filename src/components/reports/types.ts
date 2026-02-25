@@ -161,3 +161,23 @@ export interface BackloadRouteAnalysisItem {
   pallets: number;
   totalPackaging: number;
 }
+
+export interface ClientFeedbackReportItem {
+  id: string;
+  clientName: string;
+  clientEmail: string | null;
+  loadId: string;
+  route: string;
+  offloadingDate: string;
+  rating: 'happy' | 'unhappy';
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface ClientFeedbackSummary {
+  totalFeedback: number;
+  happyCount: number;
+  unhappyCount: number;
+  unhappyPercentage: number;
+  feedbackItems: ClientFeedbackReportItem[];
+}
