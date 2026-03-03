@@ -66,6 +66,8 @@ const formSchema = z.object({
     "Retail",
     "Vendor",
     "RetailVendor",
+    "Vansales",
+    "Vansales/Vendor",
     "Fertilizer",
     "Export",
   ]),
@@ -221,7 +223,7 @@ export function CreateLoadDialog({
         priority: data.priority,
         loading_date: format(data.loadingDate, "yyyy-MM-dd"),
         offloading_date: format(data.offloadingDate, "yyyy-MM-dd"),
-        time_window: timeData,
+        time_window: JSON.stringify(timeData),
         origin: data.origin,
         destination: data.destination,
         cargo_type: data.cargoType,
@@ -328,6 +330,10 @@ export function CreateLoadDialog({
                           </SelectItem>
                           <SelectItem value="Fertilizer">Fertilizer</SelectItem>
                           <SelectItem value="Export">Export</SelectItem>
+                          <SelectItem value="Vansales">Vansales</SelectItem>
+                          <SelectItem value="Vansales/Vendor">
+                            Vansales/Vendor
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

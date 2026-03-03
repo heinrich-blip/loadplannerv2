@@ -80,6 +80,8 @@ const cargoColors: Record<string, string> = {
   BV: "bg-orange-500/10 text-orange-600 border-orange-500/20",
   CBC: "bg-purple-500/10 text-purple-600 border-purple-500/20",
   Packaging: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  Vansales: "bg-cargo-vansales/10 text-cargo-vansales border-cargo-vansales/20",
+  "Vansales/Vendor": "bg-teal-500/10 text-teal-600 border-teal-500/20",
 };
 
 const cargoLabels: Record<string, string> = {
@@ -91,6 +93,8 @@ const cargoLabels: Record<string, string> = {
   BV: "BV (Backload)",
   CBC: "CBC (Backload)",
   Packaging: "Packaging (Backload)",
+  Vansales: "Vansales",
+  "Vansales/Vendor": "Vansales/Vendor",
 };
 
 function groupLoadsByDate(loads: Load[]): Map<string, Load[]> {
@@ -414,8 +418,11 @@ export function LoadsTable({
 
                           const loadingDate = safeParseISO(load.loading_date);
                           const offloadingDate = safeParseISO(load.offloading_date);
-                          const originPlannedDep = safeParseISO(times.origin?.plannedDeparture);
-                          const destPlannedArr = safeParseISO(times.destination?.plannedArrival);
+                          // Planned times are bare HH:mm strings (e.g. "15:00", "17:00")
+                          const originPlannedArr = times.origin?.plannedArrival;
+                          const originPlannedDep = times.origin?.plannedDeparture;
+                          const destPlannedArr = times.destination?.plannedArrival;
+                          const destPlannedDep = times.destination?.plannedDeparture;
 
                           return (
                             <div className="flex items-center gap-2">
@@ -426,11 +433,24 @@ export function LoadsTable({
                                     {loadingDate ? format(loadingDate, "dd MMM") : "Invalid"}
                                   </span>
                                 </div>
-                                <span className="text-[10px] text-muted-foreground mt-0.5">
-                                  {originPlannedDep
-                                    ? `Dep ${format(originPlannedDep, "HH:mm")}`
-                                    : "No time set"}
-                                </span>
+                                {originPlannedArr || originPlannedDep ? (
+                                  <div className="flex flex-col items-center mt-0.5">
+                                    {originPlannedArr && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Arr {originPlannedArr}
+                                      </span>
+                                    )}
+                                    {originPlannedDep && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Dep {originPlannedDep}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground mt-0.5">
+                                    No time set
+                                  </span>
+                                )}
                               </div>
 
                               <div className="flex flex-col items-center px-1">
@@ -447,11 +467,24 @@ export function LoadsTable({
                                     {offloadingDate ? format(offloadingDate, "dd MMM") : "Invalid"}
                                   </span>
                                 </div>
-                                <span className="text-[10px] text-muted-foreground mt-0.5">
-                                  {destPlannedArr
-                                    ? `Arr ${format(destPlannedArr, "HH:mm")}`
-                                    : "No time set"}
-                                </span>
+                                {destPlannedArr || destPlannedDep ? (
+                                  <div className="flex flex-col items-center mt-0.5">
+                                    {destPlannedArr && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Arr {destPlannedArr}
+                                      </span>
+                                    )}
+                                    {destPlannedDep && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Dep {destPlannedDep}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground mt-0.5">
+                                    No time set
+                                  </span>
+                                )}
                               </div>
                             </div>
                           );

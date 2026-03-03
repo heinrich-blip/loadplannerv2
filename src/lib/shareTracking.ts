@@ -177,6 +177,7 @@ export interface ShareableLoadInfo {
   offloading_date: string;
   cargo_type: string;
   status?: string;
+  time_window?: unknown;
   driver?: { name: string; contact?: string } | null;
   fleet_vehicle?: { vehicle_id: string; type?: string } | null;
   client_name?: string;
@@ -235,30 +236,26 @@ function isValidDate(dateStr: string | undefined | null): boolean {
 }
 
 /**
- * Calculate estimated progress percentage based on dates
- * Returns null if dates are invalid or cannot be calculated
+ * Calculate progress percentage based on load status.
+ * Date-based calculation was unreliable because loading_date / offloading_date
+ * are date-only strings (no time component), making same-day loads always 0 or 100
+ * and multi-day loads show meaningless calendar-time percentages.
  */
-function calculateProgress(loadingDate: string, offloadingDate: string): number | null {
-  if (!isValidDate(loadingDate) || !isValidDate(offloadingDate)) {
-    return null;
+function calculateProgress(status?: string, inTrip?: boolean): number | null {
+  if (inTrip) return 65;
+  switch (status?.toLowerCase()) {
+    case 'pending': return 0;
+    case 'scheduled': return 15;
+    case 'in-transit': return 50;
+    case 'delivered': return 100;
+    default: return null;
   }
-  
-  const start = new Date(loadingDate).getTime();
-  const end = new Date(offloadingDate).getTime();
-  const now = Date.now();
-  
-  // Invalid if end is before start
-  if (end <= start) return null;
-  
-  if (now <= start) return 0;
-  if (now >= end) return 100;
-  
-  return Math.round(((now - start) / (end - start)) * 100);
 }
 
 /**
- * Format date in a friendly way
- * Returns null if date is invalid
+ * Format date in a friendly way.
+ * For date-only strings (yyyy-MM-dd) we show just the date without a bogus
+ * midnight time. For full ISO timestamps we include the time.
  */
 function formatFriendlyDate(dateStr: string | undefined | null): string | null {
   if (!isValidDate(dateStr)) return null;
@@ -267,14 +264,49 @@ function formatFriendlyDate(dateStr: string | undefined | null): string | null {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // Detect date-only strings (e.g. "2026-03-03") — they have no meaningful time
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateStr!.trim());
   
   if (date.toDateString() === today.toDateString()) {
+    if (isDateOnly) return 'Today';
     return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }
   if (date.toDateString() === tomorrow.toDateString()) {
+    if (isDateOnly) return 'Tomorrow';
     return `Tomorrow, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/**
+ * Build an ETA string from offloading_date + time_window's planned arrival.
+ * Falls back to just the friendly date if time_window has no planned arrival.
+ */
+function formatETA(offloadingDate: string, timeWindow?: unknown): string | null {
+  // Parse the planned destination arrival time from time_window
+  let plannedArrival: string | undefined;
+  try {
+    const tw = typeof timeWindow === 'string' ? JSON.parse(timeWindow) : timeWindow;
+    if (tw && typeof tw === 'object') {
+      const dest = (tw as Record<string, unknown>).destination;
+      if (dest && typeof dest === 'object') {
+        const pa = (dest as Record<string, string>).plannedArrival;
+        if (pa && /^\d{1,2}:\d{2}/.test(pa)) {
+          plannedArrival = pa;
+        }
+      }
+    }
+  } catch { /* ignore parse errors */ }
+
+  const friendlyDate = formatFriendlyDate(offloadingDate);
+  if (!friendlyDate) return null;
+
+  if (plannedArrival) {
+    // e.g. "Today, 08:00" or "03 Mar 2026, 08:00"
+    return `${friendlyDate}, ${plannedArrival}`;
+  }
+  return friendlyDate;
 }
 
 /**
@@ -310,9 +342,9 @@ function formatProfessionalMessage(
   shareUrl?: string
 ): string {
   const statusDisplay = getStatusDisplay(load.status, vehicleInfo.inTrip);
-  const progress = calculateProgress(load.loading_date, load.offloading_date);
+  const progress = calculateProgress(load.status, vehicleInfo.inTrip);
   const loadedDate = formatFriendlyDate(load.loading_date);
-  const etaDate = formatFriendlyDate(load.offloading_date);
+  const etaDate = formatETA(load.offloading_date, load.time_window);
   
   const lines = [
     '━━━━━━━━━━━━━━━━━━━━━━',
@@ -414,7 +446,7 @@ function formatDetailedMessage(
   shareUrl?: string
 ): string {
   const statusDisplay = getStatusDisplay(load.status, vehicleInfo.inTrip);
-  const progress = calculateProgress(load.loading_date, load.offloading_date);
+  const progress = calculateProgress(load.status, vehicleInfo.inTrip);
   const loadingDateValid = isValidDate(load.loading_date);
   const offloadingDateValid = isValidDate(load.offloading_date);
   
@@ -434,7 +466,8 @@ function formatDetailedMessage(
     lines.push(`• *Loading Date:* ${new Date(load.loading_date).toLocaleDateString()}`);
   }
   if (offloadingDateValid) {
-    lines.push(`• *Expected Arrival:* ${new Date(load.offloading_date).toLocaleDateString()}`);
+    const eta = formatETA(load.offloading_date, load.time_window);
+    lines.push(`• *Expected Arrival:* ${eta || new Date(load.offloading_date).toLocaleDateString()}`);
   }
   if (load.cargo_type) {
     lines.push(`• *Cargo Type:* ${load.cargo_type}`);
@@ -520,7 +553,7 @@ function formatCompactMessage(
   shareUrl?: string
 ): string {
   const statusDisplay = getStatusDisplay(load.status, vehicleInfo.inTrip);
-  const etaDate = formatFriendlyDate(load.offloading_date);
+  const etaDate = formatETA(load.offloading_date, load.time_window);
   
   const lines = [
     `${statusDisplay.emoji} *${load.load_id}*`,
@@ -564,7 +597,8 @@ function formatMinimalMessage(
   ];
 
   if (isValidDate(load.offloading_date)) {
-    lines.push(`ETA: ${new Date(load.offloading_date).toLocaleDateString()}`);
+    const eta = formatETA(load.offloading_date, load.time_window);
+    lines.push(`ETA: ${eta || new Date(load.offloading_date).toLocaleDateString()}`);
   }
 
   if (load.driver?.name) {

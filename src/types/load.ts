@@ -1,5 +1,7 @@
+import type { Json } from '@/integrations/supabase/types';
+
 export type LoadStatus = 'scheduled' | 'in-transit' | 'pending' | 'delivered';
-export type CargoType = 'VanSalesRetail' | 'Retail' | 'Vendor' | 'RetailVendor' | 'Fertilizer' | 'BV' | 'CBC' | 'Packaging';
+export type CargoType = 'VanSalesRetail' | 'Retail' | 'Vendor' | 'RetailVendor' | 'Fertilizer' | 'Export' | 'BV' | 'CBC' | 'Packaging' | 'Vansales' | 'Vansales/Vendor';
 export type Priority = 'high' | 'medium' | 'low';
 export type TimeSource = 'auto' | 'manual';
 
@@ -55,13 +57,14 @@ export interface Load {
   priority: Priority;
   loading_date: string;  // ISO date string
   offloading_date: string;  // ISO date string
-  time_window: string;  // JSON string of TimeWindowData
+  time_window: Json;  // JSON string/object of TimeWindowData
   origin: string;
   destination: string;
   cargo_type: CargoType;
   quantity: number;
   weight: number;
   special_handling: string[];
+  client_id: string | null;
   fleet_vehicle_id: string | null;
   driver_id: string | null;
   co_driver_id: string | null;
@@ -95,13 +98,14 @@ export interface LoadInsert {
   priority: Priority;
   loading_date: string;
   offloading_date: string;
-  time_window: string;
+  time_window: Json;
   origin: string;
   destination: string;
   cargo_type: CargoType;
   quantity?: number;
   weight?: number;
   special_handling?: string[];
+  client_id?: string | null;
   fleet_vehicle_id?: string | null;
   driver_id?: string | null;
   co_driver_id?: string | null;

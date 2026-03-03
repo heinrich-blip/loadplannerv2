@@ -50,7 +50,6 @@ export function useClientLoads(clientId: string | undefined) {
 
       // 1. Try fetching loads linked via client_id column
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: directLoads } = await (supabase
           .from('loads')
           .select(`
@@ -115,7 +114,6 @@ export function useClientActiveLoads(clientId: string | undefined) {
 
       // 1. Try fetching loads linked via client_id column
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: directLoads } = await (supabase
           .from('loads')
           .select(`

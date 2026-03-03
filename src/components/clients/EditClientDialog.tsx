@@ -1,25 +1,24 @@
 import { Button } from '@/components/ui/button';
-import
-    {
-        Dialog,
-        DialogContent,
-        DialogDescription,
-        DialogFooter,
-        DialogHeader,
-        DialogTitle,
-    } from '@/components/ui/dialog';
-import
-    {
-        Form,
-        FormControl,
-        FormField,
-        FormItem,
-        FormLabel,
-        FormMessage,
-    } from '@/components/ui/form';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Client, useUpdateClient } from '@/hooks/useClients';
+import { useUpdateClient } from '@/hooks/useClients'; // Added import
+import type { Client } from "@/types/client";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
@@ -43,7 +42,7 @@ interface EditClientDialogProps {
 }
 
 export function EditClientDialog({ open, onOpenChange, client }: EditClientDialogProps) {
-  const updateClient = useUpdateClient();
+  const updateClient = useUpdateClient(); // This is now properly imported
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),

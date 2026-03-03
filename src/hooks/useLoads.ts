@@ -1,8 +1,18 @@
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database, Json } from '@/integrations/supabase/types';
+import type { Json } from '@/integrations/supabase/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import type {
+  Load,
+  LoadInsert,
+  BackloadInfo,
+  GeofenceEventType,
+} from '@/types/load';
+
+// Re-export types so existing consumers of '@/hooks/useLoads' keep working
+export type { Load, LoadInsert, BackloadInfo, GeofenceEventType };
+export type { BackloadQuantities } from '@/types/load';
 
 // ---------------------------------------------------------------------------
 // Google Sheets sync helper — fires-and-forgets a POST to the edge function
@@ -24,64 +34,6 @@ async function triggerGoogleSheetsSync() {
   } catch {
     // Swallow errors — sheet sync is best-effort and should never block the UI
   }
-}
-
-type LoadStatus = Database['public']['Enums']['load_status'];
-type CargoType = Database['public']['Enums']['cargo_type'];
-type PriorityLevel = Database['public']['Enums']['priority_level'];
-
-export interface BackloadQuantities {
-  bins: number;
-  crates: number;
-  pallets: number;
-}
-
-export interface BackloadInfo {
-  enabled: boolean;
-  destination: string; // Farm where backload goes (BV, CBC)
-  cargoType: 'Packaging' | 'Fertilizer' | 'BV' | 'CBC';
-  offloadingDate: string; // Date of backload delivery
-  quantities?: BackloadQuantities;
-  notes?: string;
-}
-
-export interface Load {
-  id: string;
-  load_id: string;
-  priority: PriorityLevel;
-  loading_date: string;
-  offloading_date: string;
-  time_window: Json;
-  origin: string;
-  destination: string;
-  cargo_type: CargoType;
-  quantity: number;
-  weight: number;
-  special_handling: string[];
-  client_id: string | null;
-  fleet_vehicle_id: string | null;
-  driver_id: string | null;
-  co_driver_id: string | null;
-  notes: string;
-  status: LoadStatus;
-  created_at: string;
-  updated_at: string;
-  // Actual geofence-triggered times
-  actual_loading_arrival?: string | null;
-  actual_loading_arrival_verified?: boolean;
-  actual_loading_arrival_source?: 'auto' | 'manual';
-  actual_loading_departure?: string | null;
-  actual_loading_departure_verified?: boolean;
-  actual_loading_departure_source?: 'auto' | 'manual';
-  actual_offloading_arrival?: string | null;
-  actual_offloading_arrival_verified?: boolean;
-  actual_offloading_arrival_source?: 'auto' | 'manual';
-  actual_offloading_departure?: string | null;
-  actual_offloading_departure_verified?: boolean;
-  actual_offloading_departure_source?: 'auto' | 'manual';
-  // Joined data
-  driver?: { id: string; name: string; contact: string } | null;
-  fleet_vehicle?: { id: string; vehicle_id: string; type: string; telematics_asset_id?: string | null } | null;
 }
 
 // Helper to parse backload info from time_window (handles both string and JSONB object)
@@ -113,26 +65,6 @@ export function parseRouteInfo(timeWindow: Json | null | undefined): {
   } catch {
     return null;
   }
-}
-
-export interface LoadInsert {
-  load_id: string;
-  priority: PriorityLevel;
-  loading_date: string;
-  offloading_date: string;
-  time_window: Json;
-  origin: string;
-  destination: string;
-  cargo_type: CargoType;
-  quantity?: number;
-  weight?: number;
-  special_handling?: string[];
-  client_id?: string | null;
-  fleet_vehicle_id?: string | null;
-  driver_id?: string | null;
-  co_driver_id?: string | null;
-  notes?: string;
-  status?: LoadStatus;
 }
 
 export function useLoads() {
@@ -364,13 +296,6 @@ export function useUpdateLoadTimes() {
     },
   });
 }
-
-// Geofence event types
-export type GeofenceEventType = 
-  | 'loading_arrival'    // Truck entered loading geofence
-  | 'loading_departure'  // Truck exited loading geofence - starts in-transit
-  | 'offloading_arrival' // Truck entered offloading geofence
-  | 'offloading_departure'; // Truck exited offloading geofence - delivery complete
 
 // Hook for handling geofence-triggered load updates
 export function useGeofenceLoadUpdate() {

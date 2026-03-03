@@ -87,6 +87,8 @@ const formSchema = z.object({
     "BV",
     "CBC",
     "Packaging",
+    "Vansales",
+    "Vansales/Vendor",
   ]),
   fleetVehicleId: z.string().optional(),
   driverId: z.string().optional(),
@@ -489,6 +491,10 @@ export function EditLoadDialog({
                           </SelectItem>
                           <SelectItem value="Fertilizer">Fertilizer</SelectItem>
                           <SelectItem value="Export">Export</SelectItem>
+                          <SelectItem value="Vansales">Vansales</SelectItem>
+                          <SelectItem value="Vansales/Vendor">
+                            Vansales/Vendor
+                          </SelectItem>
                           <SelectItem value="BV">BV</SelectItem>
                           <SelectItem value="CBC">CBC</SelectItem>
                           <SelectItem value="Packaging">Packaging</SelectItem>

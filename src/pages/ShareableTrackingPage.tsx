@@ -604,6 +604,10 @@ export default function ShareableTrackingPage() {
                     <span className="font-medium">Loading:</span>
                     <span>
                       {safeFormatDate(load.loading_date, "dd MMM yyyy")}
+                      {(() => {
+                        const tw = parseTimeWindow(load.time_window);
+                        return tw.origin.plannedDeparture ? `, dep ${tw.origin.plannedDeparture}` : '';
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
@@ -611,6 +615,10 @@ export default function ShareableTrackingPage() {
                     <span className="font-medium">Expected Arrival:</span>
                     <span>
                       {safeFormatDate(load.offloading_date, "dd MMM yyyy")}
+                      {(() => {
+                        const tw = parseTimeWindow(load.time_window);
+                        return tw.destination.plannedArrival ? `, ${tw.destination.plannedArrival}` : '';
+                      })()}
                     </span>
                   </div>
                 </div>

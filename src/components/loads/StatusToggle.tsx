@@ -4,11 +4,11 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Load, useUpdateLoad } from '@/hooks/useLoads';
+import type { Load, LoadStatus } from "@/types/load";
 import { cn } from '@/lib/utils';
-import { LoadStatus } from '@/types/load';
 import { AlertCircle, CheckCircle2, Clock, Loader2, MapPin, Package, Truck } from 'lucide-react';
 import { useState } from 'react';
+import { useUpdateLoad } from '@/hooks/useLoads'; // Make sure this import exists
 
 interface StatusToggleProps {
   load: Load;
@@ -61,7 +61,7 @@ const statusConfig: Record<LoadStatus, {
 };
 
 export function StatusToggle({ load, compact = false }: StatusToggleProps) {
-  const updateLoad = useUpdateLoad();
+  const updateLoadMutation = useUpdateLoad(); // Renamed to avoid confusion
   const [isUpdating, setIsUpdating] = useState(false);
   const currentStatusIndex = statusOrder.indexOf(load.status);
 
@@ -72,7 +72,7 @@ export function StatusToggle({ load, compact = false }: StatusToggleProps) {
     
     setIsUpdating(true);
     
-    updateLoad.mutate({
+    updateLoadMutation.mutate({
       id: load.id,
       status: newStatus,
     }, {
@@ -364,7 +364,7 @@ function getPhaseTooltip(phase: StepperPhase, load: Load, isActive: boolean): st
 
 // Simple inline status stepper for row display
 export function StatusStepper({ load, onRequestDelivered }: { load: Load; onRequestDelivered?: (load: Load) => void }) {
-  const updateLoad = useUpdateLoad();
+  const updateLoadMutation = useUpdateLoad(); // Renamed to avoid confusion
   const [isUpdating, setIsUpdating] = useState(false);
   const currentPhase = getLoadPhase(load);
   const currentPhaseIndex = stepperPhases.indexOf(currentPhase);
@@ -388,7 +388,7 @@ export function StatusStepper({ load, onRequestDelivered }: { load: Load; onRequ
 
     setIsUpdating(true);
 
-    updateLoad.mutate({
+    updateLoadMutation.mutate({
       id: load.id,
       status: targetDbStatus,
     }, {

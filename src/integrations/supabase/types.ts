@@ -704,6 +704,8 @@ export interface Database {
         | "CBC"
         | "Packaging"
         | "Export"
+        | "Vansales"
+        | "Vansales/Vendor"
       load_status: "scheduled" | "in-transit" | "pending" | "delivered"
       load_time_source: "auto" | "manual"
       priority_level: "high" | "medium" | "low"
@@ -842,6 +844,8 @@ export const Constants = {
         "CBC",
         "Packaging",
         "Export",
+        "Vansales",
+        "Vansales/Vendor",
       ],
       load_status: ["scheduled", "in-transit", "pending", "delivered"],
       load_time_source: ["auto", "manual"],
