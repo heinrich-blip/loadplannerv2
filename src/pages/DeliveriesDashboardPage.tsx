@@ -5,56 +5,50 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import
-  {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-  } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useCustomLocations } from "@/hooks/useCustomLocations";
 import { useDrivers } from "@/hooks/useDrivers";
 import { useFleetVehicles } from "@/hooks/useFleetVehicles";
 import { useGeofenceMonitor } from "@/hooks/useGeofenceMonitor";
 import { type Load, useLoads } from "@/hooks/useLoads";
-import
-  {
-    calculateDepotETA,
-    calculateDepotTripProgress,
-    customLocationToDepot,
-    findDepotByName,
-  } from "@/lib/depots";
-import
-  {
-    formatLastConnected,
-    type TelematicsAsset,
-  } from "@/lib/telematicsGuru";
+import {
+  calculateDepotETA,
+  calculateDepotTripProgress,
+  customLocationToDepot,
+  findDepotByName,
+} from "@/lib/depots";
+import {
+  formatLastConnected,
+  type TelematicsAsset,
+} from "@/lib/telematicsGuru";
 import { parseTimeWindow } from "@/lib/timeWindow";
 import { cn, getLocationDisplayName, safeFormatDate } from "@/lib/utils";
 import { endOfWeek, format, formatDistanceToNow, parseISO, startOfWeek } from "date-fns";
-import
-  {
-    AlertCircle,
-    AlertTriangle,
-    Box,
-    Calendar,
-    CheckCircle2,
-    Clock,
-    Info,
-    MapPin,
-    Navigation,
-    Package,
-    RefreshCw,
-    Route,
-    Signal,
-    SignalHigh,
-    SignalLow,
-    SignalMedium,
-    Timer,
-    Weight,
-  } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Box,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Info,
+  MapPin,
+  Navigation,
+  Package,
+  Route,
+  Signal,
+  SignalHigh,
+  SignalLow,
+  SignalMedium,
+  Timer,
+  Weight,
+} from "lucide-react";
 import { useMemo } from "react";
 
 // ============================================================================
@@ -169,11 +163,8 @@ export default function DeliveriesDashboardPage() {
   // Use the global geofence monitor for telematics data and auto-capture
   const {
     telematicsAssets: _telematicsAssets,
-    telematicsLoading,
     telematicsAuthError,
-    lastRefresh,
     loadsWithAssets,
-    refetch,
   } = useGeofenceMonitor();
 
   // Enrich loads with progress data and truck positions for the deliveries UI
@@ -325,7 +316,7 @@ export default function DeliveriesDashboardPage() {
         const completedToday = vehicleTodayLoads.filter((l) => l.status === "delivered").length;
 
         const lastConnectedUtc = load.telematicsAsset?.lastConnectedUtc;
-        const staleMinutes = lastConnectedUtc 
+        const staleMinutes = lastConnectedUtc
           ? Math.floor((new Date().getTime() - new Date(lastConnectedUtc).getTime()) / (1000 * 60))
           : undefined;
         const isStale = staleMinutes !== undefined && staleMinutes > 30;
@@ -395,25 +386,7 @@ export default function DeliveriesDashboardPage() {
     });
   }, [activeLoads, fleetVehicles, drivers, loads]);
 
-  const stats = useMemo(() => {
-    const now = new Date();
-    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-    
-    const weekLoads = loads.filter((l) => {
-      const loadDate = parseISO(l.loading_date);
-      return loadDate >= weekStart && loadDate <= weekEnd;
-    });
 
-    return {
-      totalTrucks: trucksWithLoads.length,
-      inTransitLoads: activeLoads.filter((l) => l.status === "in-transit").length,
-      scheduledLoads: activeLoads.filter((l) => l.status === "scheduled").length,
-      movingTrucks: trucksWithLoads.filter((t) => t.isMoving).length,
-      deliveredThisWeek: weekLoads.filter((l) => l.status === "delivered").length,
-      totalWeek: weekLoads.length,
-    };
-  }, [trucksWithLoads, activeLoads, loads]);
 
   // Group trucks by date category: Today, Upcoming, Past
   const groupedTrucks = useMemo(() => {
@@ -514,92 +487,7 @@ export default function DeliveriesDashboardPage() {
           )}
 
           {/* Header */}
-          <div className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 shadow-sm">
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                    Week of {format(startOfWeek(new Date(), { weekStartsOn: 1 }), "dd MMM")} - {format(endOfWeek(new Date(), { weekStartsOn: 1 }), "dd MMM yyyy")} 
-                    <span className="text-emerald-600 dark:text-emerald-400 ml-2">• Live Tracking</span>
-                  </p>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <StatCard icon={<Route className="h-4 w-4" />} value={stats.inTransitLoads} label="In Transit" color="blue" />
-                  <StatCard icon={<Calendar className="h-4 w-4" />} value={stats.scheduledLoads} label="Scheduled" color="purple" />
-                  <StatCard icon={<Navigation className="h-4 w-4" />} value={stats.movingTrucks} label="Moving" color="green" />
-                  <StatCard icon={<CheckCircle2 className="h-4 w-4" />} value={stats.deliveredThisWeek} label="Delivered" color="amber" />
-
-                  <Separator orientation="vertical" className="h-10 mx-3" />
-
-                  <div className="flex flex-col items-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={refetch}
-                      disabled={telematicsLoading}
-                      className="gap-2 shadow-sm hover:shadow-md transition-all"
-                    >
-                      <RefreshCw className={cn("h-4 w-4", telematicsLoading && "animate-spin")} />
-                      Refresh
-                    </Button>
-                    {lastRefresh && (
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 font-medium">
-                        {format(lastRefresh, "HH:mm:ss")}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="px-6 py-2.5 bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800/70 dark:to-slate-900/50 border-t border-slate-200/50 dark:border-slate-700/50 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <div className="flex items-center gap-6">
-                <span className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide text-[10px]">Status:</span>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200/50 dark:border-blue-800/30">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">In Transit</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-violet-50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30">
-                  <MapPin className="h-3 w-3 text-violet-500" />
-                  <span className="text-violet-600 dark:text-violet-400 font-medium">Loading</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-purple-50 dark:bg-purple-950/30 border border-purple-200/50 dark:border-purple-800/30">
-                  <MapPin className="h-3 w-3 text-purple-500" />
-                  <span className="text-purple-600 dark:text-purple-400 font-medium">Offloading</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-800/30">
-                  <Calendar className="h-3 w-3 text-amber-500" />
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">Scheduled</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/50 dark:border-emerald-800/30">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Delivered</span>
-                </div>
-                <Separator orientation="vertical" className="h-5" />
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1" title="GPS Signal Strong">
-                    <SignalHigh className="h-3 w-3 text-green-500" />
-                  </div>
-                  <div className="flex items-center gap-1" title="GPS Signal Medium">
-                    <SignalMedium className="h-3 w-3 text-amber-500" />
-                  </div>
-                  <div className="flex items-center gap-1" title="GPS Signal Weak">
-                    <SignalLow className="h-3 w-3 text-red-500" />
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/30" title="Stale - No update for 30+ min">
-                    <AlertCircle className="h-3 w-3 text-red-500" />
-                    <span className="text-red-500 font-semibold">Stale</span>
-                  </div>
-                </div>
-              </div>
-              <span className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1 rounded-full font-medium text-[10px]">
-                {stats.totalTrucks} trucks • {stats.inTransitLoads + stats.scheduledLoads} loads • Auto-refresh 10s
-              </span>
-            </div>
-          </div>
 
           {/* Content */}
           <ScrollArea className="flex-1">
@@ -690,34 +578,7 @@ export default function DeliveriesDashboardPage() {
 // STAT CARD
 // ============================================================================
 
-function StatCard({
-  icon,
-  value,
-  label,
-  color,
-}: {
-  icon: React.ReactNode;
-  value: number;
-  label: string;
-  color: "blue" | "purple" | "green" | "amber";
-}) {
-  const colors = {
-    blue: "bg-gradient-to-br from-blue-50 to-blue-100/50 text-blue-600 dark:from-blue-950/60 dark:to-blue-900/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/30",
-    purple: "bg-gradient-to-br from-purple-50 to-purple-100/50 text-purple-600 dark:from-purple-950/60 dark:to-purple-900/30 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/30",
-    green: "bg-gradient-to-br from-emerald-50 to-emerald-100/50 text-emerald-600 dark:from-emerald-950/60 dark:to-emerald-900/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/30",
-    amber: "bg-gradient-to-br from-amber-50 to-amber-100/50 text-amber-600 dark:from-amber-950/60 dark:to-amber-900/30 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/30",
-  };
 
-  return (
-    <div className={cn("px-4 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all duration-200", colors[color])}>
-      <div className="flex items-center gap-2.5">
-        <div className="opacity-70">{icon}</div>
-        <span className="text-2xl font-bold tracking-tight">{value}</span>
-      </div>
-      <span className="text-[11px] font-medium opacity-70 uppercase tracking-wide">{label}</span>
-    </div>
-  );
-}
 
 // ============================================================================
 // TRUCK ROW
@@ -730,13 +591,13 @@ function TruckRow({ truck }: { truck: TruckWithLoads }) {
   const GpsIcon = () => {
     switch (truck.gpsSignalStrength) {
       case "strong":
-        return <SignalHigh className="h-4 w-4 text-emerald-500" />;
+        return <SignalHigh className="h-3.5 w-3.5 text-emerald-500" />;
       case "medium":
-        return <SignalMedium className="h-4 w-4 text-amber-500" />;
+        return <SignalMedium className="h-3.5 w-3.5 text-amber-500" />;
       case "weak":
-        return <SignalLow className="h-4 w-4 text-red-500" />;
+        return <SignalLow className="h-3.5 w-3.5 text-red-500" />;
       default:
-        return <Signal className="h-4 w-4 text-slate-300" />;
+        return <Signal className="h-3.5 w-3.5 text-slate-300" />;
     }
   };
 
@@ -753,17 +614,17 @@ function TruckRow({ truck }: { truck: TruckWithLoads }) {
         {/* Truck Info */}
         <div
           className={cn(
-            "w-60 flex-shrink-0 border-r border-slate-200/80 dark:border-slate-700/50",
+            "w-40 flex-shrink-0 border-r border-slate-200/80 dark:border-slate-700/50",
             hasInTransit
               ? "bg-gradient-to-br from-blue-50 via-blue-50/50 to-white dark:from-blue-950/40 dark:via-blue-950/20 dark:to-slate-900"
               : isAtOrigin
-              ? "bg-gradient-to-br from-purple-50 via-purple-50/50 to-white dark:from-purple-950/40 dark:via-purple-950/20 dark:to-slate-900"
-              : "bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/70 dark:to-slate-900/50"
+                ? "bg-gradient-to-br from-purple-50 via-purple-50/50 to-white dark:from-purple-950/40 dark:via-purple-950/20 dark:to-slate-900"
+                : "bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/70 dark:to-slate-900/50"
           )}
         >
-          <div className="p-4">
-            <div className="flex items-center justify-end mb-3">
-              <div className="flex items-center gap-2">
+          <div className="p-3">
+            <div className="flex items-center justify-end mb-2">
+              <div className="flex items-center gap-1.5">
                 <Tooltip>
                   <TooltipTrigger>
                     <GpsIcon />
@@ -771,52 +632,52 @@ function TruckRow({ truck }: { truck: TruckWithLoads }) {
                   <TooltipContent>
                     GPS: {truck.gpsSignalStrength}
                     {truck.lastUpdateDate && (
-                      <div className="text-xs text-slate-400">
+                      <div className="text-[10px] text-slate-400">
                         {formatDistanceToNow(truck.lastUpdateDate, { addSuffix: true })}
                       </div>
                     )}
                     {truck.isStale && (
-                      <div className="text-xs text-red-400 mt-1">
+                      <div className="text-[10px] text-red-400 mt-0.5">
                         ⚠️ Data is stale ({truck.staleMinutes}+ min old)
                       </div>
                     )}
                   </TooltipContent>
                 </Tooltip>
                 {truck.isStale && (
-                  <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] gap-1 animate-pulse shadow-sm shadow-red-500/30">
-                    <AlertCircle className="h-3 w-3" />
+                  <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white text-[9px] gap-0.5 animate-pulse shadow-sm shadow-red-500/30">
+                    <AlertCircle className="h-2.5 w-2.5" />
                     STALE
                   </Badge>
                 )}
                 {truck.isMoving && !truck.isStale && (
-                  <Badge className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[10px] animate-pulse shadow-sm shadow-emerald-500/30">
+                  <Badge className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[9px] animate-pulse shadow-sm shadow-emerald-500/30">
                     MOVING
                   </Badge>
                 )}
               </div>
             </div>
 
-            <div className="mb-3">
-              <h3 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">{truck.vehicleName}</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+            <div className="mb-1">
+              <h3 className="font-bold text-slate-900 dark:text-white text-xs tracking-tight">{truck.vehicleName}</h3>
+              <p className="text-[9px] text-slate-500 dark:text-slate-400 truncate mt-0">
                 {truck.driverName || "No Driver"}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-2 gap-1 text-[9px]">
               <div className={cn(
-                "p-2 rounded-lg flex items-center gap-2 shadow-sm border",
-                truck.isStale 
-                  ? "bg-gradient-to-r from-red-50 to-red-100/50 border-red-200/50 dark:from-red-950/40 dark:to-red-900/20 dark:border-red-800/30" 
+                "p-1 rounded-lg flex items-center gap-1 shadow-sm border",
+                truck.isStale
+                  ? "bg-gradient-to-r from-red-50 to-red-100/50 border-red-200/50 dark:from-red-950/40 dark:to-red-900/20 dark:border-red-800/30"
                   : "bg-white border-slate-200/60 dark:bg-slate-800/80 dark:border-slate-700/50"
               )}>
-                <Navigation className={cn("h-3.5 w-3.5", truck.isMoving && !truck.isStale ? "text-emerald-500" : truck.isStale ? "text-red-400" : "text-slate-400")} />
+                <Navigation className={cn("h-2.5 w-2.5", truck.isMoving && !truck.isStale ? "text-emerald-500" : truck.isStale ? "text-red-400" : "text-slate-400")} />
                 <span className={cn("font-bold", truck.isStale && "text-red-600 dark:text-red-400")}>
                   {truck.speed || 0} km/h
                 </span>
               </div>
-              <div className="p-2 rounded-lg bg-white border border-slate-200/60 dark:bg-slate-800/80 dark:border-slate-700/50 flex items-center gap-2 shadow-sm">
-                <Package className="h-3.5 w-3.5 text-blue-500" />
+              <div className="p-1 rounded-lg bg-white border border-slate-200/60 dark:bg-slate-800/80 dark:border-slate-700/50 flex items-center gap-1 shadow-sm">
+                <Package className="h-2.5 w-2.5 text-blue-500" />
                 <span className="font-bold">
                   {truck.completedLoadsToday}/{truck.totalLoadsToday || truck.loads.length}
                 </span>
@@ -825,12 +686,12 @@ function TruckRow({ truck }: { truck: TruckWithLoads }) {
 
             {truck.currentLocation && (
               <div className={cn(
-                "mt-3 p-2 rounded-lg flex items-center gap-2 text-xs shadow-sm border",
-                truck.isStale 
-                  ? "bg-gradient-to-r from-red-50 to-red-100/50 border-red-200/50 dark:from-red-950/40 dark:to-red-900/20 dark:border-red-800/30" 
+                "mt-1 p-1 rounded-lg flex items-center gap-1 text-[9px] shadow-sm border",
+                truck.isStale
+                  ? "bg-gradient-to-r from-red-50 to-red-100/50 border-red-200/50 dark:from-red-950/40 dark:to-red-900/20 dark:border-red-800/30"
                   : "bg-white border-slate-200/60 dark:bg-slate-800/80 dark:border-slate-700/50"
               )}>
-                <MapPin className={cn("h-3.5 w-3.5 flex-shrink-0", truck.isStale ? "text-red-500" : "text-rose-500")} />
+                <MapPin className={cn("h-2.5 w-2.5 flex-shrink-0", truck.isStale ? "text-red-500" : "text-rose-500")} />
                 <span className="truncate font-medium">{truck.currentLocation}</span>
               </div>
             )}
@@ -839,18 +700,18 @@ function TruckRow({ truck }: { truck: TruckWithLoads }) {
 
         {/* Loads */}
         <div className="flex-1 min-w-0 bg-white dark:bg-slate-950">
-          <div className="px-5 py-3 border-b border-slate-200/80 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-900/80 dark:to-slate-950 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300">
-              <Route className="h-4 w-4 text-slate-500" />
+          <div className="px-3 py-1 border-b border-slate-200/80 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-900/80 dark:to-slate-950 flex items-center justify-between">
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+              <Route className="h-3 w-3 text-slate-500" />
               Delivery Sequence
             </div>
-            <Badge variant="secondary" className="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 shadow-sm">
+            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 rounded-full bg-slate-100 dark:bg-slate-800 shadow-sm">
               {truck.loads.length} {truck.loads.length === 1 ? "load" : "loads"}
             </Badge>
           </div>
 
           <ScrollArea className="w-full">
-            <div className="flex p-5 gap-5">
+            <div className="flex p-3 gap-3">
               {truck.loads.map((load, loadIndex) => (
                 <LoadCard
                   key={load.id}
@@ -888,13 +749,13 @@ function LoadCard({
   const isDelivered = load.status === "delivered";
   const isTracking = load.isTrackingActive;
   const isWaiting = !isTracking && load.status === "scheduled";
-  
+
   // Determine detailed status based on geofence timestamps
   const hasArrivedAtLoading = !!load.actual_loading_arrival;
   const hasDepartedLoading = !!load.actual_loading_departure;
   const hasArrivedAtOffloading = !!load.actual_offloading_arrival;
   const hasDepartedOffloading = !!load.actual_offloading_departure;
-  
+
   // Determine current phase
   const isAtLoadingPoint = hasArrivedAtLoading && !hasDepartedLoading;
   const isAtOffloadingPoint = hasArrivedAtOffloading && !hasDepartedOffloading;
@@ -910,7 +771,7 @@ function LoadCard({
     if (load.isAtLoadOrigin) return { label: "AT DEPOT", color: "purple", icon: MapPin };
     return { label: "SCHEDULED", color: "amber", icon: Calendar };
   };
-  
+
   const detailedStatus = getDetailedStatus();
   const StatusIcon = detailedStatus.icon;
 
@@ -966,12 +827,12 @@ function LoadCard({
             "w-5 h-0.5 rounded-full",
             isDelivered ? "bg-gradient-to-r from-emerald-400 to-emerald-500" : isInTransit ? "bg-gradient-to-r from-blue-400 to-blue-500" : "bg-slate-300 dark:bg-slate-700"
           )} />
-          <svg 
+          <svg
             className={cn(
               "h-4 w-4 -ml-1.5 drop-shadow-sm",
               isDelivered ? "text-emerald-500" : isInTransit ? "text-blue-500" : "text-slate-400 dark:text-slate-600"
-            )} 
-            fill="currentColor" 
+            )}
+            fill="currentColor"
             viewBox="0 0 20 20"
           >
             <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -983,7 +844,7 @@ function LoadCard({
         <TooltipTrigger asChild>
           <Card
             className={cn(
-              "w-[280px] flex-shrink-0 cursor-pointer transition-all duration-300 hover:shadow-xl border-slate-200/80 dark:border-slate-800",
+              "w-[200px] flex-shrink-0 cursor-pointer transition-all duration-300 hover:shadow-xl border-slate-200/80 dark:border-slate-800",
               isCurrent && isInTransit && "ring-2 ring-blue-500/80 shadow-lg shadow-blue-500/20",
               isCurrent && !isInTransit && load.isAtLoadOrigin && "ring-2 ring-purple-500/80 shadow-lg shadow-purple-500/20",
               isDelivered && "ring-2 ring-emerald-500/80 shadow-md shadow-emerald-500/15",
@@ -1003,8 +864,8 @@ function LoadCard({
               )}
             />
 
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2.5">
                   <span
                     className={cn(
@@ -1037,91 +898,129 @@ function LoadCard({
                 </Badge>
               </div>
 
-              <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-900/50 rounded-xl p-3 mb-3 border border-slate-200/60 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-center">
-                    <div className={cn(
-                      "w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm",
-                      hasArrivedAtLoading ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"
-                    )} />
-                    <div className={cn(
-                      "w-0.5 h-10 rounded-full",
-                      isDelivered ? "bg-emerald-500" : 
-                      hasDepartedLoading ? "bg-gradient-to-b from-emerald-500 to-blue-500" :
-                      "bg-slate-300 dark:bg-slate-700"
-                    )} />
-                    <div className={cn(
-                      "w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm",
-                      isDelivered ? "bg-emerald-500" : 
-                      hasArrivedAtOffloading ? "bg-purple-500" : 
-                      "bg-slate-300 dark:bg-slate-600"
-                    )} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium">Origin</p>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-                      {getLocationDisplayName(load.origin)}
-                    </p>
-                    {/* Show loading times */}
-                    {hasArrivedAtLoading && (
-                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
-                        Arrived: {formatTimestamp(load.actual_loading_arrival)}
-                        {hasDepartedLoading && ` • Departed: ${formatTimestamp(load.actual_loading_departure)}`}
-                      </p>
-                    )}
-                    {/* Late notes for loading */}
-                    {(lateLoadingArrival || lateLoadingDeparture) && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />
-                        <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">
-                          {lateLoadingArrival && `Arr: ${lateLoadingArrival}`}
-                          {lateLoadingArrival && lateLoadingDeparture && " • "}
-                          {lateLoadingDeparture && `Dep: ${lateLoadingDeparture}`}
-                        </span>
-                      </div>
-                    )}
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium mt-3">Destination</p>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-                      {getLocationDisplayName(load.destination)}
-                    </p>
-                    {/* Show offloading times */}
-                    {hasArrivedAtOffloading && (
-                      <p className="text-[10px] text-purple-600 dark:text-purple-400 font-medium mt-0.5">
-                        Arrived: {formatTimestamp(load.actual_offloading_arrival)}
-                        {hasDepartedOffloading && ` • Departed: ${formatTimestamp(load.actual_offloading_departure)}`}
-                      </p>
-                    )}
-                    {/* Late notes for offloading */}
-                    {(lateOffloadingArrival || lateOffloadingDeparture) && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />
-                        <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">
-                          {lateOffloadingArrival && `Arr: ${lateOffloadingArrival}`}
-                          {lateOffloadingArrival && lateOffloadingDeparture && " • "}
-                          {lateOffloadingDeparture && `Dep: ${lateOffloadingDeparture}`}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right pl-2">
-                    <p className="text-xl font-bold text-slate-700 dark:text-slate-300">
-                      {load.progressData ? Math.round(load.progressData.totalDistance) : "?"}
-                    </p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">km</p>
-                  </div>
-                </div>
-              </div>
+              {isWaiting ? (
+  <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-900/50 rounded-xl p-1.5 mb-1.5 border border-slate-200/60 dark:border-slate-800">
+    <div className="flex items-center gap-1.5">
+      <div className="flex flex-col items-center">
+        <div className={cn(
+          "w-2 h-2 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm bg-slate-300 dark:bg-slate-600"
+        )} />
+        <div className={cn(
+          "w-0.5 h-6 rounded-full bg-slate-300 dark:bg-slate-700"
+        )} />
+        <div className={cn(
+          "w-2 h-2 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm bg-slate-300 dark:bg-slate-600"
+        )} />
+      </div>
+      <div className="flex-1 flex gap-1.5 min-w-0">
+        <div className="flex-1">
+          <p className="text-[8px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium">Origin</p>
+          <p className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 truncate">
+            {getLocationDisplayName(load.origin)}
+          </p>
+        </div>
+        <div className="flex-1">
+          <p className="text-[8px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium">Destination</p>
+          <p className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 truncate">
+            {getLocationDisplayName(load.destination)}
+          </p>
+        </div>
+      </div>
+      <div className="text-right pl-0.5">
+        <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+          {load.progressData ? Math.round(load.progressData.totalDistance) : "?"}
+        </p>
+        <p className="text-[8px] text-slate-500 dark:text-slate-400 font-medium">km</p>
+      </div>
+    </div>
+  </div>
+) : (
+  <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-900/50 rounded-xl p-1.5 mb-1.5 border border-slate-200/60 dark:border-slate-800">
+    <div className="flex items-center gap-1.5">
+      <div className="flex flex-col items-center">
+        <div className={cn(
+          "w-2 h-2 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm",
+          hasArrivedAtLoading ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"
+        )} />
+        <div className={cn(
+          "w-0.5 h-6 rounded-full",
+          isDelivered ? "bg-emerald-500" : 
+          hasDepartedLoading ? "bg-gradient-to-b from-emerald-500 to-blue-500" :
+          "bg-slate-300 dark:bg-slate-700"
+        )} />
+        <div className={cn(
+          "w-2 h-2 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm",
+          isDelivered ? "bg-emerald-500" : 
+          hasArrivedAtOffloading ? "bg-purple-500" : 
+          "bg-slate-300 dark:bg-slate-600"
+        )} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[8px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium">Origin</p>
+        <p className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 truncate">
+          {getLocationDisplayName(load.origin)}
+        </p>
+        {/* Show loading times */}
+        {hasArrivedAtLoading && (
+          <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-medium mt-0">
+            Arrived: {formatTimestamp(load.actual_loading_arrival)}
+            {hasDepartedLoading && ` • Departed: ${formatTimestamp(load.actual_loading_departure)}`}
+          </p>
+        )}
+        {/* Late notes for loading */}
+        {(lateLoadingArrival || lateLoadingDeparture) && (
+          <div className="flex items-center gap-0.5 mt-0">
+            <AlertTriangle className="h-2 w-2 text-red-500 flex-shrink-0" />
+            <span className="text-[8px] text-red-600 dark:text-red-400 font-medium">
+              {lateLoadingArrival && `Arr: ${lateLoadingArrival}`}
+              {lateLoadingArrival && lateLoadingDeparture && " • "}
+              {lateLoadingDeparture && `Dep: ${lateLoadingDeparture}`}
+            </span>
+          </div>
+        )}
+        <p className="text-[8px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium mt-1">Destination</p>
+        <p className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 truncate">
+          {getLocationDisplayName(load.destination)}
+        </p>
+        {/* Show offloading times */}
+        {hasArrivedAtOffloading && (
+          <p className="text-[8px] text-purple-600 dark:text-purple-400 font-medium mt-0">
+            Arrived: {formatTimestamp(load.actual_offloading_arrival)}
+            {hasDepartedOffloading && ` • Departed: ${formatTimestamp(load.actual_offloading_departure)}`}
+          </p>
+        )}
+        {/* Late notes for offloading */}
+        {(lateOffloadingArrival || lateOffloadingDeparture) && (
+          <div className="flex items-center gap-0.5 mt-0">
+            <AlertTriangle className="h-2 w-2 text-red-500 flex-shrink-0" />
+            <span className="text-[8px] text-red-600 dark:text-red-400 font-medium">
+              {lateOffloadingArrival && `Arr: ${lateOffloadingArrival}`}
+              {lateOffloadingArrival && lateOffloadingDeparture && " • "}
+              {lateOffloadingDeparture && `Dep: ${lateOffloadingDeparture}`}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="text-right pl-0.5">
+        <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+          {load.progressData ? Math.round(load.progressData.totalDistance) : "?"}
+        </p>
+        <p className="text-[8px] text-slate-500 dark:text-slate-400 font-medium">km</p>
+      </div>
+    </div>
+  </div>
+)}
 
-              <div className="flex gap-2 mb-3 text-xs">
+              <div className="flex gap-1 mb-2 text-[11px]">
                 {load.cargo_type && (
-                  <div className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-950/40 dark:to-indigo-900/20 px-2.5 py-1.5 rounded-lg border border-indigo-200/50 dark:border-indigo-800/30">
-                    <Box className="h-3 w-3 text-indigo-500" />
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-950/40 dark:to-indigo-900/20 px-2 py-1 rounded-lg border border-indigo-200/50 dark:border-indigo-800/30">
+                    <Box className="h-2.5 w-2.5 text-indigo-500" />
                     <span className="font-medium text-indigo-700 dark:text-indigo-300">{formatCargoType(load.cargo_type)}</span>
                   </div>
                 )}
                 {load.weight > 0 && (
-                  <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-950/40 dark:to-orange-900/20 px-2.5 py-1.5 rounded-lg border border-orange-200/50 dark:border-orange-800/30">
-                    <Weight className="h-3 w-3 text-orange-500" />
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-950/40 dark:to-orange-900/20 px-2 py-1 rounded-lg border border-orange-200/50 dark:border-orange-800/30">
+                    <Weight className="h-2.5 w-2.5 text-orange-500" />
                     <span className="font-medium text-orange-700 dark:text-orange-300">{load.weight}T</span>
                   </div>
                 )}
@@ -1214,36 +1113,36 @@ function LoadCard({
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-200/50 dark:border-slate-700/50">
+              <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
                 {isDelivered ? (
                   <>
-                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                      <CheckCircle2 className="h-3 w-3" />
                       <span>Delivered</span>
                     </div>
                     <span className="text-slate-500 dark:text-slate-400 font-medium">
-                      {load.actual_offloading_departure 
-                        ? formatTimestamp(load.actual_offloading_departure) 
+                      {load.actual_offloading_departure
+                        ? formatTimestamp(load.actual_offloading_departure)
                         : safeFormatDate(load.loading_date, "dd MMM")}
                     </span>
                   </>
                 ) : isTracking ? (
                   <>
-                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                      <Timer className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                      <Timer className="h-3 w-3" />
                       <span>ETA: {load.progressData?.etaFormatted || "N/A"}</span>
                     </div>
-                    <span className="text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-[10px] font-semibold">{load.progressData?.durationFormatted}</span>
+                    <span className="text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0 rounded-full text-[9px] font-semibold">{load.progressData?.durationFormatted}</span>
                   </>
                 ) : (
                   <>
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                      <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                    <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                      <Calendar className="h-3 w-3 text-slate-400" />
                       <span className="font-medium">{safeFormatDate(load.loading_date, "dd MMM")}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                      <Clock className="h-3 w-3 text-slate-400" />
-                      <span className="font-semibold text-[10px] text-slate-600 dark:text-slate-400">{safeFormatDate(load.loading_date, "HH:mm")}</span>
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-1.5 py-0 rounded-full">
+                      <Clock className="h-2.5 w-2.5 text-slate-400" />
+                      <span className="font-semibold text-[9px] text-slate-600 dark:text-slate-400">{safeFormatDate(load.loading_date, "HH:mm")}</span>
                     </div>
                   </>
                 )}
@@ -1260,8 +1159,8 @@ function LoadCard({
               </div>
               <div>
                 <span className="font-bold text-slate-800 dark:text-slate-200">Load {load.load_id}</span>
-                <div className="mt-0.5"><StatusBadge 
-                  status={load.status} 
+                <div className="mt-0.5"><StatusBadge
+                  status={load.status}
                   distanceRemaining={load.progressData?.distanceRemaining}
                   hasArrivalTime={!!load.actual_offloading_arrival}
                   hasDepartureTime={!!load.actual_offloading_departure}
